@@ -41,8 +41,6 @@ jobs:
         run: |
           SKIP_WASM_BUILD=1 cargo check --release
       - name: Check Build for Benchmarking
-        run: >
-          pushd node &&
-          cargo check --features=runtime-benchmarks --release
+        run: cargo check --features=runtime-benchmarks --release
       - name: Run Tests
         run: cargo test --release
