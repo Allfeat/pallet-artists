@@ -20,7 +20,7 @@ use frame_support::{
     Blake2_128Concat, BoundedVec, dispatch::DispatchResult,
     traits::{
 		fungibles::{Create, Mutate, metadata::Mutate as MetadataMutate},
-		Currency,
+		Currency, ChangeMembers, InitializeMembers,
 	},
     dispatch::DispatchError
 };
@@ -88,6 +88,13 @@ pub mod pallet {
                 AssetId = Self::AssetId,
             >;
 
+        type ArtistGroup: ChangeMembers<Self::AccountId>
+            + InitializeMembers<Self::AccountId>;
+
+        /// The maximum number of artists that can be stored.
+        #[pallet::constant]
+        type MaxArtists: Get<u32>;
+
         /// The maximum length of an artist name or symbol stored on-chain.
 		#[pallet::constant]
 		type StringLimit: Get<u32>;
@@ -103,6 +110,13 @@ pub mod pallet {
 
 		type WeightInfo: WeightInfo;
     }
+
+    #[pallet::storage]
+    pub(super) type Members<T: Config<I>, I: 'static = ()> = StorageValue<
+        _,
+        BoundedVec<T::AccountId, T::MaxArtists>,
+        ValueQuery,
+    >;
 
     #[pallet::storage]
     #[pallet::getter(fn get_artist)]
@@ -137,6 +151,8 @@ pub mod pallet {
 	#[pallet::genesis_build]
     impl <T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
         fn build(&self) {
+            let mut accounts: Vec<T::AccountId> = Vec::new();
+
             for (id, account, name, asset_name, asset_symbol) in &self.artists {
                 assert!(!ArtistStorage::<T, I>::contains_key(id), "Artist ID already in use");
 
@@ -166,7 +182,7 @@ pub mod pallet {
                     T::DefaultSupply::get(),
                 ).unwrap();
 
-                // Inserting the new artist in the storage
+                // Inserting the new artist datas in the storage
                 ArtistStorage::<T, I>::insert(
                     id,
                     ArtistInfos {
@@ -176,7 +192,17 @@ pub mod pallet {
                         age,
                     }
                 );
+
+                let location = accounts.binary_search(&account).err().ok_or(Error::<T, I>::AlreadyUsedAcc).unwrap();
+                accounts.insert(location, account.clone());
             }
+
+            // Initializing the upstream artist group if any
+            T::ArtistGroup::initialize_members(&accounts[..]);
+
+            // Store the genesis artist accounts
+            let bounded_accounts: BoundedVec<T::AccountId, T::MaxArtists> = accounts.try_into().unwrap();
+            Members::<T, I>::put(bounded_accounts);
         }
     }
 
@@ -195,6 +221,12 @@ pub mod pallet {
         StringTooLong,
         /// The given string is  too short to be valid.
         StringTooShort,
+        /// The account is already attributed to an artist.
+        AlreadyUsedAcc,
+        /// The number of artists stored exceeded `T::MaxArtists`.
+        ExceedArtistBound,
+        /// The caller isn't a verified artist.
+        NotAnArtist,
     }
 
     #[pallet::call]
@@ -240,6 +272,8 @@ pub mod pallet {
                 asset_name,
                 asset_symbol,
             )?;
+
+            Self::add_artist_account(acc.clone())?;
 
             // Inserting the new artist in the storage
             ArtistStorage::<T, I>::insert(
