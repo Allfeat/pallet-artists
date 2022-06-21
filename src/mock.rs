@@ -4,16 +4,15 @@ use crate as pallet_artists;
 use tests::ALICE;
 use sp_core::H256;
 use frame_support::{
-	construct_runtime,
+	construct_runtime, parameter_types, ord_parameter_types,
 	traits::{ConstU32, ConstU64, ConstU8, GenesisBuild},
 };
-use sp_runtime::{
-	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup},
-};
+use sp_runtime::{testing::Header, traits::{BlakeTwo256, IdentityLookup}};
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+type AccountId = u64;
 
 impl frame_system::Config for Test {
     type BaseCallFilter = frame_support::traits::Everything;
@@ -25,7 +24,7 @@ impl frame_system::Config for Test {
 	type BlockNumber = u64;
 	type Hash = H256;
 	type Hashing = BlakeTwo256;
-	type AccountId = u64;
+	type AccountId = AccountId;
 	type Lookup = IdentityLookup<Self::AccountId>;
 	type Header = Header;
 	type Event = Event;
@@ -71,6 +70,23 @@ impl pallet_assets::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const ArtistMaxProposals: u32 = 100;
+	pub const ArtistMaxMembers: u32 = 10000;
+}
+
+type ArtistCollective = Instance1;
+impl pallet_collective::Config<ArtistCollective> for Test {
+	type Origin = Origin;
+	type Proposal = Call;
+	type Event = Event;
+	type MotionDuration = ();
+	type MaxProposals = ArtistMaxProposals;
+	type MaxMembers = ArtistMaxMembers;
+	type DefaultVote = pallet_collective::PrimeDefaultVote;
+	type WeightInfo = ();
+}
+
 impl Config for Test {
     type Event = Event;
 	type Balance = <Test as pallet_assets::Config>::Balance;
@@ -78,6 +94,8 @@ impl Config for Test {
 	type ArtistId = u32;
 	type AssetId = <Test as pallet_assets::Config>::AssetId;
 	type Assets = Assets;
+	type ArtistGroup = ArtistCommittee;
+	type MaxArtists = ArtistMaxMembers;
 	type StringLimit = ConstU32<100>;
     type DefaultSupply = ConstU64<1_000_000_000_000>;
     type MinBalance = ConstU64<1_000_000>;
@@ -93,6 +111,7 @@ construct_runtime!(
     {
         System: frame_system,
         Balances: pallet_balances,
+		ArtistCommittee: pallet_collective::<Instance1>,
         Assets: pallet_assets,
         Artists: pallet_artists,
     }

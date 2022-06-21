@@ -29,6 +29,7 @@ sp-std = { version = "4.0.0", git = "https://github.com/SailorSnoW/substrate.git
 sp-io = { version = "6.0.0", git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 pallet-assets = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
+pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 
 [features]
 default = ["std"]
@@ -42,7 +43,9 @@ std = [
 	"frame-benchmarking/std",
 	"pallet-assets/std",
 	"pallet-balances/std",
+	"pallet-collective/std",
 ]
+
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",

@@ -33,4 +33,20 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
         Ok(())
     }
+
+    /// Add a new artist account to the upstream `T::ArtistGroup` and the `Members` pallet storage.
+    pub fn add_artist_account(acc: T::AccountId) -> Result<(), DispatchError> {
+        let mut accounts: Vec<T::AccountId> = Members::<T, I>::get().into();
+
+        // find the correct index and check if the element doesn't already exist
+        let location = accounts.binary_search(&acc).err().ok_or(Error::<T, I>::AlreadyUsedAcc)?;
+        accounts.insert(location, acc.clone());
+
+        T::ArtistGroup::change_members_sorted(&[acc], &[], &accounts[..]);
+        let bounded_accounts: BoundedVec<T::AccountId, T::MaxArtists> = accounts.try_into()
+            .map_err(|_| Error::<T, I>::ExceedArtistBound)?;
+        Members::<T, I>::put(bounded_accounts);
+
+        Ok(())
+    }
 }
