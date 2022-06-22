@@ -1,7 +1,6 @@
 use super::*;
 use frame_support::pallet_prelude::*;
 
-
 /// The informations stored on-chain for an artist.
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
 pub struct ArtistInfos<ArtistId, AccountId, BoundedString, BlockNumber> {
