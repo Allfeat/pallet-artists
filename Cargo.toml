@@ -12,6 +12,8 @@ readme = "README.md"
 targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
+serde = "1.0.136"
+
 codec = { package = "parity-scale-codec", version = "3.0.0", default-features = false }
 scale-info = { version = "2.0.1", default-features = false, features = ["derive"] }
 sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }

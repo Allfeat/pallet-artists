@@ -10,24 +10,20 @@ pub mod tests;
 
 mod functions;
 mod types;
-pub mod weights;
 pub use types::*;
 
-use codec::HasCompact;
 use frame_support::{
     dispatch::DispatchError,
     dispatch::DispatchResult,
-    traits::{
-        fungibles::{metadata::Mutate as MetadataMutate, Create, Mutate},
-        ChangeMembers, Currency, InitializeMembers,
-    },
+    traits::{ChangeMembers, Currency, InitializeMembers, ReservableCurrency},
     Blake2_128Concat, BoundedVec,
 };
-use sp_runtime::traits::{AtLeast32BitUnsigned, StaticLookup};
 use sp_std::prelude::*;
 
 pub use pallet::*;
-pub use weights::WeightInfo;
+
+type BalanceOf<T> =
+    <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -37,51 +33,20 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T, I = ()>(_);
+    pub struct Pallet<T>(_);
 
     // Pallet configuration
     #[pallet::config]
-    pub trait Config<I: 'static = ()>: frame_system::Config {
-        type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+    pub trait Config: frame_system::Config {
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        /// The units in which we record balances.
-        type Balance: Member
-            + Parameter
-            + AtLeast32BitUnsigned
-            + Default
-            + Copy
-            + MaybeSerializeDeserialize
-            + MaxEncodedLen
-            + TypeInfo;
-
-        type Currency: Currency<Self::AccountId>;
-
-        /// The identifier of an artist
-        type ArtistId: Member
-            + Parameter
-            + Default
-            + Copy
-            + HasCompact
-            + MaybeSerializeDeserialize
-            + MaxEncodedLen
-            + TypeInfo;
-
-        /// Identifier for the class of asset.
-        type AssetId: Member
-            + Parameter
-            + Default
-            + Copy
-            + HasCompact
-            + MaybeSerializeDeserialize
-            + MaxEncodedLen
-            + TypeInfo
-            + From<Self::ArtistId>;
-
-        type Assets: Create<Self::AccountId, AssetId = Self::AssetId, Balance = Self::Balance>
-            + Mutate<Self::AccountId, AssetId = Self::AssetId, Balance = Self::Balance>
-            + MetadataMutate<Self::AccountId, AssetId = Self::AssetId>;
+        type Currency: ReservableCurrency<Self::AccountId>;
 
         type ArtistGroup: ChangeMembers<Self::AccountId> + InitializeMembers<Self::AccountId>;
+
+        /// The deposit needed for creating an artist account.
+        #[pallet::constant]
+        type CreationDepositAmount: Get<BalanceOf<Self>>;
 
         /// The maximum number of artists that can be stored.
         #[pallet::constant]
@@ -91,40 +56,31 @@ pub mod pallet {
         #[pallet::constant]
         type StringLimit: Get<u32>;
 
-        #[pallet::constant]
-        type DefaultSupply: Get<Self::Balance>;
-
-        #[pallet::constant]
-        type MinBalance: Get<Self::Balance>;
-
-        #[pallet::constant]
-        type Decimals: Get<u8>;
-
-        type WeightInfo: WeightInfo;
+        // type WeightInfo: WeightInfo;
     }
 
     #[pallet::storage]
-    pub(super) type Members<T: Config<I>, I: 'static = ()> =
-        StorageValue<_, BoundedVec<T::AccountId, T::MaxArtists>, ValueQuery>;
+    pub(super) type CertifiedMembers<T: Config> =
+        StorageValue<_, BoundedVec<T::AccountId, ConstU32<1_000_000>>, ValueQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_artist)]
-    pub(super) type ArtistStorage<T: Config<I>, I: 'static = ()> = StorageMap<
+    pub(super) type ArtistStorage<T: Config> = StorageMap<
         _,
         Blake2_128Concat,
-        T::ArtistId,
-        ArtistInfos<T::ArtistId, T::AccountId, BoundedVec<u8, T::StringLimit>, T::BlockNumber>,
+        T::AccountId,
+        ArtistInfos<T::AccountId, BoundedVec<u8, T::StringLimit>, T::BlockNumber>,
         OptionQuery,
     >;
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
-        /// The exisiting artists at the genesis
-        pub artists: Vec<(T::ArtistId, T::AccountId, Vec<u8>, Vec<u8>, Vec<u8>)>,
+    pub struct GenesisConfig<T: Config> {
+        /// The existing artists at the genesis
+        pub artists: Vec<(T::AccountId, bool, Vec<u8>, Vec<Styles>)>,
     }
 
     #[cfg(feature = "std")]
-    impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
+    impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 artists: Default::default(),
@@ -133,154 +89,104 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            let mut accounts: Vec<T::AccountId> = Vec::new();
+            for (account, is_certified, name, styles) in &self.artists {
+                let name: BoundedVec<u8, T::StringLimit> = name.clone().try_into().unwrap();
+                let styles: BoundedVec<Styles, ConstU32<3>> = styles.clone().try_into().unwrap();
 
-            for (id, account, name, asset_name, asset_symbol) in &self.artists {
-                assert!(
-                    !ArtistStorage::<T, I>::contains_key(id),
-                    "Artist ID already in use"
-                );
+                if ArtistStorage::<T>::contains_key(account) {
+                    panic!()
+                }
 
-                let artist_name: BoundedVec<u8, T::StringLimit> =
-                    name.clone().try_into().expect("name is too long");
-                let age: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
+                T::Currency::reserve(account, T::CreationDepositAmount::get()).unwrap();
 
-                // Create, set the metadatas and mint the supply of the artist asset
-                T::Assets::create(
-                    id.clone().into(),
-                    account.clone(),
-                    false,
-                    T::MinBalance::get(),
-                )
-                .unwrap();
-                // Set the metadatas of the artist asset
-                T::Assets::set(
-                    id.clone().into(),
-                    &account,
-                    asset_name.to_vec(),
-                    asset_symbol.to_vec(),
-                    T::Decimals::get(),
-                )
-                .unwrap();
-                // Mint the default supply of the artist asset
-                T::Assets::mint_into(id.clone().into(), &account, T::DefaultSupply::get()).unwrap();
-
-                // Inserting the new artist datas in the storage
-                ArtistStorage::<T, I>::insert(
-                    id,
+                ArtistStorage::<T>::insert(
+                    account,
                     ArtistInfos {
-                        id: *id,
                         account: account.clone(),
-                        name: artist_name.clone(),
-                        age,
+                        is_certified: *is_certified,
+                        name,
+                        styles,
+                        age: <frame_system::Pallet<T>>::block_number(),
                     },
                 );
 
-                let location = accounts
-                    .binary_search(&account)
-                    .err()
-                    .ok_or(Error::<T, I>::AlreadyUsedAcc)
-                    .unwrap();
-                accounts.insert(location, account.clone());
+                // TODO add certified to members/group
             }
-
-            // Initializing the upstream artist group if any
-            T::ArtistGroup::initialize_members(&accounts[..]);
-
-            // Store the genesis artist accounts
-            let bounded_accounts: BoundedVec<T::AccountId, T::MaxArtists> =
-                accounts.try_into().unwrap();
-            Members::<T, I>::put(bounded_accounts);
         }
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config<I>, I: 'static = ()> {
+    pub enum Event<T: Config> {
         /// An artist was created.
         ArtistCreated {
-            artist_id: T::ArtistId,
+            account: T::AccountId,
             name: BoundedVec<u8, T::StringLimit>,
             block: T::BlockNumber,
         },
     }
 
     #[pallet::error]
-    pub enum Error<T, I = ()> {
-        /// The artist id is already used.
-        AlreadyExist,
+    pub enum Error<T> {
+        /// This account already is an artist account.
+        AlreadyCreated,
         /// The given string is longer than `T::StringLimit`.
         StringTooLong,
-        /// The given string is  too short to be valid.
-        StringTooShort,
-        /// The account is already attributed to an artist.
-        AlreadyUsedAcc,
+        /// The account is already marked as certified account.
+        AlreadyCertified,
         /// The number of artists stored exceeded `T::MaxArtists`.
         ExceedArtistBound,
         /// The caller isn't a verified artist.
         NotAnArtist,
+        /// The caller doesn't have enough funds for the deposit
+        NotEnoughFunds,
     }
 
     #[pallet::call]
-    impl<T: Config<I>, I: 'static> Pallet<T, I> {
-        /// Create and insert a new artist.
+    impl<T: Config> Pallet<T> {
+        /// Claim the account of the caller origin as an Artist.
+        /// This will create the artist profile of the account with the given fields:
         ///
-        /// Must be called from the root origin.
+        /// `name:` The name of the artist.
+        /// `styles:` The styles associated to the artist, up to 3.
         ///
-        /// The artist asset is initalized with the same ID than the artist and with a supply of `T::DefaultSupply`.
-        ///
-        /// Parameters:
-        /// - `id`: The ID of the new artist to create.
-        /// - `asset_id`: The ID of the artist asset to create.
-        /// - `account`: The main account of the artist.
-        /// - `name`: The name of the artist.
-        /// Should be less or equal than `T::StringLimit`.
-        /// - `asset_name`: The name of the artist asset.
-        /// - `asset_symbol`: The symbol of the artist asset.
-        ///
-        /// Emits `ArtistCreated` when the artist is successfuly inserted in storage.
-        #[pallet::weight(T::WeightInfo::force_create(name.len() as u32, asset_name.len() as u32, asset_symbol.len() as u32,))]
-        pub fn force_create(
+        /// NOTE: This can only be done once for an account.
+        #[pallet::weight(0)]
+        pub fn create(
             origin: OriginFor<T>,
-            #[pallet::compact] id: T::ArtistId,
-            account: <T::Lookup as StaticLookup>::Source,
             name: Vec<u8>,
-            asset_name: Vec<u8>,
-            asset_symbol: Vec<u8>,
+            styles: BoundedVec<Styles, ConstU32<3>>,
         ) -> DispatchResult {
-            let acc = T::Lookup::lookup(account)?;
+            let caller = ensure_signed(origin)?;
 
-            ensure_root(origin)?;
             ensure!(
-                !ArtistStorage::<T, I>::contains_key(id),
-                Error::<T, I>::AlreadyExist
+                !ArtistStorage::<T>::contains_key(&caller),
+                Error::<T>::AlreadyCreated
             );
 
-            let artist_name: BoundedVec<u8, T::StringLimit> =
-                name.try_into().expect("name is too long");
+            let bounded_name: BoundedVec<u8, T::StringLimit> =
+                name.try_into().map_err(|_| Error::<T>::StringTooLong)?;
             let age: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
 
-            // Create, set the metadatas and mint the supply of the artist asset
-            Self::create_and_init_asset(id.into(), acc.clone(), asset_name, asset_symbol)?;
+            T::Currency::reserve(&caller, T::CreationDepositAmount::get())
+                .map_err(|_| Error::<T>::NotEnoughFunds)?;
 
-            Self::add_artist_account(acc.clone())?;
-
-            // Inserting the new artist in the storage
-            ArtistStorage::<T, I>::insert(
-                id,
+            ArtistStorage::<T>::insert(
+                caller.clone(),
                 ArtistInfos {
-                    id,
-                    account: acc,
-                    name: artist_name.clone(),
-                    age,
+                    account: caller.clone(),
+                    is_certified: false,
+                    name: bounded_name.clone(),
+                    styles,
+                    age: age.clone(),
                 },
             );
 
-            Self::deposit_event(Event::ArtistCreated {
-                artist_id: id,
-                name: artist_name,
+            Self::deposit_event(Event::<T>::ArtistCreated {
+                account: caller,
+                name: bounded_name,
                 block: age,
             });
 

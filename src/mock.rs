@@ -2,8 +2,8 @@ use super::*;
 use crate as pallet_artists;
 
 use frame_support::{
-    construct_runtime, ord_parameter_types, parameter_types,
-    traits::{ConstU32, ConstU64, ConstU8, GenesisBuild},
+    construct_runtime, parameter_types,
+    traits::{ConstU32, ConstU64, GenesisBuild},
 };
 use sp_core::H256;
 use sp_runtime::{
@@ -78,7 +78,7 @@ parameter_types! {
     pub const ArtistMaxMembers: u32 = 10000;
 }
 
-type ArtistCollective = Instance1;
+type ArtistCollective = pallet_collective::Instance1;
 impl pallet_collective::Config<ArtistCollective> for Test {
     type Origin = Origin;
     type Proposal = Call;
@@ -90,20 +90,18 @@ impl pallet_collective::Config<ArtistCollective> for Test {
     type WeightInfo = ();
 }
 
+parameter_types! {
+    pub const CreationDepositAmount: u64 = 1_000_000_000_000;
+}
+
 impl Config for Test {
     type Event = Event;
-    type Balance = <Test as pallet_assets::Config>::Balance;
     type Currency = Balances;
-    type ArtistId = u32;
-    type AssetId = <Test as pallet_assets::Config>::AssetId;
-    type Assets = Assets;
     type ArtistGroup = ArtistCommittee;
+    type CreationDepositAmount = CreationDepositAmount;
     type MaxArtists = ArtistMaxMembers;
-    type StringLimit = ConstU32<100>;
-    type DefaultSupply = ConstU64<1_000_000_000_000>;
-    type MinBalance = ConstU64<1_000_000>;
-    type Decimals = ConstU8<10>;
-    type WeightInfo = pallet_artists::weights::SubstrateWeight<Test>;
+    type StringLimit = ConstU32<20>;
+    // type WeightInfo = pallet_artists::weights::SubstrateWeight<Test>;
 }
 
 construct_runtime!(
@@ -126,18 +124,17 @@ pub(crate) fn new_test_ext(empty_genesis: bool) -> sp_io::TestExternalities {
         .unwrap();
 
     let config: pallet_balances::GenesisConfig<Test> = pallet_balances::GenesisConfig {
-        balances: vec![(ALICE.into(), 1_000_000_000_000)],
+        balances: vec![(ALICE.into(), 10_000_000_000_000)],
     };
     let mut artists_config: pallet_artists::GenesisConfig<Test> =
         pallet_artists::GenesisConfig::default();
     if !empty_genesis {
         artists_config = pallet_artists::GenesisConfig {
             artists: vec![(
-                0,
                 ALICE,
+                false,
                 "Genesis Artist".into(),
-                "Genesis Artist Asset".into(),
-                "GAA".into(),
+                vec![Styles::Rock, Styles::Electronic, Styles::Pop],
             )],
         }
     }
