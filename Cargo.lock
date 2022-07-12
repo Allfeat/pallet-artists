@@ -1272,6 +1272,7 @@ dependencies = [
  "pallet-assets",
  "pallet-balances",
  "pallet-collective",
+ "pallet-membership",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -1312,6 +1313,23 @@ dependencies = [
 
 [[package]]
 name = "pallet-collective"
+version = "4.0.0-dev"
+source = "git+https://github.com/SailorSnoW/substrate.git?branch=allfeat#c8653447fc8ef8d95a92fe164c96dffb37919e85"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-membership"
 version = "4.0.0-dev"
 source = "git+https://github.com/SailorSnoW/substrate.git?branch=allfeat#c8653447fc8ef8d95a92fe164c96dffb37919e85"
 dependencies = [

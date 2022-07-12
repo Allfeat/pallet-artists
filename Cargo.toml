@@ -24,6 +24,8 @@ frame-support = { version = "4.0.0-dev", default-features = false, git = "https:
 # `system` module provides us with all sorts of useful stuff and macros depend on it being around.
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat", optional = true }
+pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
+pallet-membership = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 
 [dev-dependencies]
 sp-core = { version = "6.0.0", git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
@@ -31,7 +33,7 @@ sp-std = { version = "4.0.0", git = "https://github.com/SailorSnoW/substrate.git
 sp-io = { version = "6.0.0", git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 pallet-assets = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
-pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
+
 
 [features]
 default = ["std"]
@@ -46,6 +48,7 @@ std = [
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-collective/std",
+	"pallet-membership/std",
 ]
 
 runtime-benchmarks = [

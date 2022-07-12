@@ -1,129 +1,257 @@
 use super::*;
-use crate::mock::Balances;
-use crate::{mock::*, Error};
-use frame_support::{assert_noop, assert_ok, bounded_vec, ensure};
-use frame_system::ensure_signed;
-use frame_system::pallet_prelude::OriginFor;
-use sp_runtime::DispatchError::BadOrigin;
+use crate::mock::*;
+
+use frame_support::{assert_noop, assert_ok, ensure};
+use frame_system::{ensure_signed, pallet_prelude::OriginFor};
+use sp_runtime::traits::BadOrigin;
+
+// TODO: Add event tests
+// TODO: Add tests for member vec max length
+// TODO: For now, only Root have the greatest rights, test with halfOfCouncil
+// TODO: Add update artist data tests
+// TODO: Refactor duplicate code between Artist and Candidate #DRY
+
+// Test accounts used
+pub const ALICE: <Test as frame_system::Config>::AccountId = 0; // Root, Artist
+pub const BOB: <Test as frame_system::Config>::AccountId = 1; // Candidate
+pub const JOHN: <Test as frame_system::Config>::AccountId = 2; // Nothing
 
 impl<T: Config> Pallet<T> {
     /// Simple extrinsic that success if the caller is a certified artist
-    pub fn test_artist_caller(origin: OriginFor<T>) -> DispatchResult {
+    pub fn test_caller_is_artist(origin: OriginFor<T>) -> DispatchResult {
+        let caller = ensure_signed(origin)?;
+        ensure!(Artists::<T>::contains_key(&caller), Error::<T>::NotAnArtist);
+        Ok(())
+    }
+
+    /// Simple extrinsic that success if the caller is a certified artist
+    pub fn test_caller_is_candidate(origin: OriginFor<T>) -> DispatchResult {
         let caller = ensure_signed(origin)?;
         ensure!(
-            CertifiedMembers::<T>::get().contains(&caller),
-            Error::<T>::NotAnArtist
+            Candidates::<T>::contains_key(&caller),
+            Error::<T>::NotACandidate
         );
-
         Ok(())
     }
 }
 
-// Test accounts used
-pub const ALICE: <Test as frame_system::Config>::AccountId = 0;
-pub const BOB: <Test as frame_system::Config>::AccountId = 1;
-
 /// Genesis tests
 #[test]
 fn genesis_config() {
-    new_test_ext(false).execute_with(|| {
+    new_test_ext(true).execute_with(|| {
+        // Test genesis from artists:
+        // ==========================
         assert!(
-            Artists::get_artist(ALICE)
-                == Some(ArtistInfos {
-                    account: ALICE,
-                    is_certified: false,
-                    name: b"Genesis Artist".to_vec().try_into().unwrap(),
-                    styles: bounded_vec![Styles::Rock, Styles::Electronic, Styles::Pop],
-                    age: 0, // Genesis block is 0
+            ArtistsPallet::get_artist(ALICE)
+                == Some(Artist {
+                    account_id: ALICE,
+                    name: b"Genesis Alice".to_vec().try_into().unwrap(),
+                    created_at: 0
                 })
         );
+
         // Ensure that the deposit is also effected in the genesis build
-        let alice_free = Balances::free_balance(ALICE);
+        let deposit = CreationDepositAmount::get();
+        let alice_balance = Balances::free_balance(ALICE);
         let alice_reserve = Balances::reserved_balance(ALICE);
-        assert_eq!(alice_reserve, CreationDepositAmount::get());
-        assert_eq!(
-            alice_free,
-            (10_000_000_000_000 as u64) - CreationDepositAmount::get()
-        )
+
+        assert_eq!(alice_reserve, deposit);
+        assert_eq!(alice_balance, 100 - deposit);
 
         // TODO assert!(ArtistCommittee::is_member(&ALICE))
+
+        // Test genesis from artists:
+        // ==========================
+        assert!(
+            ArtistsPallet::get_candidate(BOB)
+                == Some(Candidate {
+                    account_id: BOB,
+                    name: b"Genesis Bob".to_vec().try_into().unwrap(),
+                    created_at: 0
+                })
+        );
+
+        // Ensure that the deposit is also effected in the genesis build
+        let deposit = CreationDepositAmount::get();
+        let bob_balance = Balances::free_balance(BOB);
+        let bob_reserve = Balances::reserved_balance(BOB);
+
+        assert_eq!(bob_reserve, deposit);
+        assert_eq!(bob_balance, 100 - deposit);
     });
 }
 
 #[test]
-fn create_artist() {
+fn test_submit_candidacy_with_too_long_name() {
     new_test_ext(true).execute_with(|| {
-        let old_deposit = Balances::reserved_balance(ALICE);
-        // Verify that the call fail if the name is longer that the defined String limit.
         assert_noop!(
-            Artists::create(
-                Origin::signed(ALICE),
-                b"Is more than 20 chars".to_vec(),
-                bounded_vec![Styles::Electronic, Styles::Pop],
+            ArtistsPallet::submit_candidacy(
+                Origin::signed(JOHN),
+                b"qwertyuiopasdfghjklzxcvbnm qwertyuiopasdfghjklzxcvbnm"
+                    .to_vec()
+                    .try_into()
+                    .unwrap()
             ),
-            Error::<Test>::StringTooLong
-        );
-        // should create the artist profile of `ALICE`
-        assert_ok!(Artists::create(
-            Origin::signed(ALICE),
-            b"Test Artist".to_vec(),
-            bounded_vec![Styles::Electronic, Styles::Pop],
-        ));
-        // We also verify the stored datas
-        assert_eq!(
-            Artists::get_artist(ALICE),
-            Some(ArtistInfos {
-                account: ALICE,
-                is_certified: false,
-                name: b"Test Artist".to_vec().try_into().unwrap(),
-                styles: bounded_vec![Styles::Electronic, Styles::Pop],
-                age: 1, // Emitted on the first mock block
-            })
-        );
-        let new_deposit = Balances::reserved_balance(ALICE);
-        // Verify that the caller have deposited the expected amount in reserve to create his artist profile
-        assert_eq!(new_deposit, old_deposit + CreationDepositAmount::get());
-
-        let old_deposit = Balances::reserved_balance(ALICE);
-        // Shouldn't be able to create his artist profile again from the same account
-        assert_noop!(
-            Artists::create(
-                Origin::signed(ALICE),
-                b"Test Artist again".to_vec(),
-                bounded_vec![Styles::Rock, Styles::Pop],
-            ),
-            Error::<Test>::AlreadyCreated
-        );
-        let new_deposit = Balances::reserved_balance(ALICE);
-        // Verify that any funds wasn't taken to reserve because of the error
-        assert_eq!(new_deposit, old_deposit);
-
-        // Verify that someone can't create an artist profile if he don't have required funds
-        let bob_balance = Balances::free_balance(BOB);
-        assert!(bob_balance < CreationDepositAmount::get());
-        assert_noop!(
-            Artists::create(
-                Origin::signed(BOB),
-                b"Test Artist 2".to_vec(),
-                bounded_vec![Styles::Blues, Styles::Pop],
-            ),
-            Error::<Test>::NotEnoughFunds
+            Error::<Test>::NameTooLong
         );
     });
 }
 
-#[ignore]
+#[test]
+fn test_submit_candidacy_should_fail_for_existing_artist() {
+    new_test_ext(true).execute_with(|| {
+        assert_noop!(
+            ArtistsPallet::submit_candidacy(
+                Origin::signed(ALICE),
+                b"Alice".to_vec().try_into().unwrap()
+            ),
+            Error::<Test>::AlreadyAnArtist
+        );
+    });
+}
+
+#[test]
+fn test_submit_candidacy_should_fail_for_existing_candidate() {
+    new_test_ext(true).execute_with(|| {
+        assert_noop!(
+            ArtistsPallet::submit_candidacy(
+                Origin::signed(BOB),
+                b"Bob".to_vec().try_into().unwrap()
+            ),
+            Error::<Test>::AlreadyACandidate
+        );
+    });
+}
+
+#[test]
+fn test_only_an_existing_candidacy_could_be_removed() {
+    new_test_ext(true).execute_with(|| {
+        assert_noop!(
+            ArtistsPallet::withdraw_candidacy(Origin::signed(JOHN)),
+            Error::<Test>::NotACandidate
+        );
+    });
+}
+
+#[test]
+fn test_submit_candidacy_twice_should_fail() {
+    new_test_ext(true).execute_with(|| {
+        assert_noop!(
+            ArtistsPallet::submit_candidacy(
+                Origin::signed(BOB),
+                b"Bobby".to_vec().try_into().unwrap(),
+            ),
+            Error::<Test>::AlreadyACandidate
+        );
+    });
+}
+
+#[test]
+fn test_submit_candidacy() {
+    new_test_ext(true).execute_with(|| {
+        // John should be able to candidate
+        assert_ok!(ArtistsPallet::submit_candidacy(
+            Origin::signed(JOHN),
+            b"Johnny".to_vec().try_into().unwrap()
+        ));
+
+        // Ensure that the deposit is also effected in the genesis build
+        let deposit = CreationDepositAmount::get();
+        let balance = Balances::free_balance(JOHN);
+        let reserve = Balances::reserved_balance(JOHN);
+
+        assert_eq!(reserve, deposit);
+        assert_eq!(balance, 100 - deposit);
+
+        // John should now be in the candidate list
+        assert_ok!(ArtistsPallet::test_caller_is_candidate(Origin::signed(
+            JOHN
+        )));
+    });
+}
+
+#[test]
+fn test_withdraw_candidacy() {
+    new_test_ext(true).execute_with(|| {
+        let deposit = CreationDepositAmount::get();
+        let initial_balance = Balances::free_balance(BOB);
+
+        assert_ok!(ArtistsPallet::withdraw_candidacy(Origin::signed(BOB)));
+
+        // Ensure that the deposit is also effected in the genesis build
+        let current_balance = Balances::free_balance(BOB);
+        let current_reserve = Balances::reserved_balance(BOB);
+
+        assert_eq!(current_reserve, 0);
+        assert_eq!(current_balance, initial_balance + deposit);
+
+        // Bob should have been removed from the candidate list
+        assert_noop!(
+            ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)),
+            Error::<Test>::NotACandidate
+        );
+    });
+}
+
+#[test]
+fn approve_candidacy_to_artist() {
+    new_test_ext(true).execute_with(|| {
+        // An candidate cannot approve itself
+        assert_noop!(
+            ArtistsPallet::approve_candidacy(Origin::signed(BOB), BOB),
+            BadOrigin
+        );
+
+        // Could not approve an artist without a valid candidacy
+        assert_noop!(
+            ArtistsPallet::approve_candidacy(Origin::root(), JOHN),
+            Error::<Test>::CandidateNotFound
+        );
+
+        // Root could approve an artist
+        assert_ok!(ArtistsPallet::approve_candidacy(Origin::root(), BOB));
+
+        // Could not approve an artist twice
+        assert_noop!(
+            ArtistsPallet::approve_candidacy(Origin::root(), BOB),
+            Error::<Test>::AlreadyAnArtist
+        );
+
+        // The artist is well added to the artist group
+        assert_ok!(ArtistsPallet::test_caller_is_artist(Origin::signed(BOB)));
+
+        // The candidacy was well removed from the candidacies pool
+        assert_noop!(
+            ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)),
+            Error::<Test>::NotACandidate
+        );
+    });
+}
+
 #[test]
 fn caller_is_artist() {
-    new_test_ext(false).execute_with(|| {
+    new_test_ext(true).execute_with(|| {
         // Should execute the extrinsic as `ALICE` is in the artists group
-        assert_ok!(Artists::test_artist_caller(Origin::signed(ALICE)));
-        // Should refuse the root origin then
-        assert_noop!(Artists::test_artist_caller(Origin::root()), BadOrigin);
-        // Should refuse the root origin then
+        assert_ok!(ArtistsPallet::test_caller_is_artist(Origin::signed(ALICE)));
+
+        // Should refuse BOB who isn't an artist
         assert_noop!(
-            Artists::test_artist_caller(Origin::signed(BOB)),
+            ArtistsPallet::test_caller_is_artist(Origin::signed(BOB)),
             Error::<Test>::NotAnArtist
+        );
+    })
+}
+
+#[test]
+fn caller_is_candidate() {
+    new_test_ext(true).execute_with(|| {
+        // Should execute the extrinsic as `BOB` is in the candidate list
+        assert_ok!(ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)));
+
+        // Should refuse the ALICE who isn't a candidate
+        assert_noop!(
+            ArtistsPallet::test_caller_is_candidate(Origin::signed(ALICE)),
+            Error::<Test>::NotACandidate
         );
     })
 }

@@ -1,44 +1,45 @@
 use super::*;
 use frame_support::pallet_prelude::*;
 
-use serde::{Serialize, Deserialize};
+pub type BalanceOf<T> =
+    <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
-/// The main informations stored on-chain for an artist.
+// Note: Currently the Artist and the candidate Structure looks similar.
+// But there are two different kings of user with different rights
+// and their structures could be different as well soon.
+
+/// Structure that holds the artist information that will be stored on-chain
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-pub struct ArtistInfos<AccountId, BoundedString, BlockNumber> {
+pub struct Artist<AccountId, BoundedString, BlockNumber> {
     /// The identifier of the account of the artist.
-    pub(super) account: AccountId,
-    /// The artist is certified or not.
-    pub(super) is_certified: bool,
+    pub(super) account_id: AccountId,
     /// The name of the artist.
     pub(super) name: BoundedString,
-    /// The musical styles of the artist, up to 3.
-    pub(super) styles: BoundedVec<Styles, ConstU32<3>>,
     /// The block number when the artist was created
-    pub(super) age: BlockNumber,
+    pub(super) created_at: BlockNumber,
 }
 
-/// A list of music styles an artist profile can include.
-#[derive(
-    RuntimeDebug,
-    Clone,
-    Encode,
-    Decode,
-    Eq,
-    PartialEq,
-    MaxEncodedLen,
-    TypeInfo,
-    Serialize,
-    Deserialize,
-)]
-pub enum Styles {
-    Electronic,
-    Pop,
-    Rock,
-    Blues,
-    Country,
-    Folk,
-    HipHop,
-    Jazz,
-    Metal,
+/// Structure that holds the candidate information that will be stored on-chain
+#[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
+pub struct Candidate<AccountId, BoundedString, BlockNumber> {
+    /// The identifier of the account of the candidate.
+    pub(super) account_id: AccountId,
+    /// The name of the future artist.
+    pub(super) name: BoundedString,
+    /// The block number when the candidature was submitted
+    pub(super) created_at: BlockNumber,
+    // TODO: add the kyc_id
+}
+
+impl<AccountId, BoundedString, BlockNumber> Artist<AccountId, BoundedString, BlockNumber> {
+    pub fn from_candidate(
+        candidate: Candidate<AccountId, BoundedString, BlockNumber>,
+        block_number: BlockNumber,
+    ) -> Self {
+        Artist {
+            account_id: candidate.account_id,
+            name: candidate.name,
+            created_at: block_number,
+        }
+    }
 }
