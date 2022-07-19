@@ -9,6 +9,7 @@ use frame_support::{
     construct_runtime, parameter_types,
     traits::{ConstU32, ConstU64},
 };
+use frame_system::EnsureRoot;
 use sp_core::H256;
 use sp_runtime::{
     testing::Header,
@@ -79,33 +80,6 @@ impl pallet_assets::Config for Test {
 }
 
 parameter_types! {
-    pub const TechnicalMotionDuration: u32 = 5 * DAYS;
-    pub const TechnicalMaxProposals: u32 = 30;
-    pub const TechnicalMaxMembers: u32 = 10;
-}
-
-type TechnicalCollective = pallet_collective::Instance1;
-impl pallet_collective::Config<TechnicalCollective> for Test {
-    type Origin = Origin;
-    type Proposal = Call;
-    type Event = Event;
-    type MotionDuration = ();
-    type MaxProposals = TechnicalMaxProposals;
-    type MaxMembers = TechnicalMaxMembers;
-    type DefaultVote = pallet_collective::PrimeDefaultVote;
-    type WeightInfo = ();
-}
-
-type HalfOfCouncilOrigin =
-    pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 1, 2>;
-
-// Warning: it works on `cargo check`, `cargo build` but not in `cargo test`
-// type EnsureRootOrHalfCouncil = EnsureOneOf<
-//     EnsureRoot<AccountId>,
-//     pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCommittee, 1, 2>,
-// >;
-
-parameter_types! {
     // We use small max values for testing purpose
     pub const CreationDepositAmount: u64 = 10;
     pub const MaxArtists: u32 = 5;
@@ -116,9 +90,7 @@ parameter_types! {
 impl pallet_artists::Config for Test {
     type Event = Event;
     type Currency = Balances;
-    type ArtistsManagerOrigin = HalfOfCouncilOrigin;
-    type MembershipInitialized = TechnicalCommittee;
-    type MembershipChanged = TechnicalCommittee;
+    type AdminOrigin = EnsureRoot<AccountId>;
     type CreationDepositAmount = CreationDepositAmount;
     type MaxArtists = MaxArtists;
     type MaxCandidates = MaxCandidates;
@@ -133,13 +105,10 @@ construct_runtime!(
     {
         System: frame_system,
         Balances: pallet_balances,
-        TechnicalCommittee: pallet_collective::<Instance1>,
         Assets: pallet_assets,
         ArtistsPallet: pallet_artists,
     }
 );
-
-use pallet_collective::Instance1;
 
 pub(crate) fn new_test_ext(include_genesis: bool) -> sp_io::TestExternalities {
     let mut storage = frame_system::GenesisConfig::default()
@@ -158,21 +127,11 @@ pub(crate) fn new_test_ext(include_genesis: bool) -> sp_io::TestExternalities {
         false => pallet_artists::GenesisConfig::default(),
     };
 
-    let technical_collective_config: pallet_collective::GenesisConfig<Test, Instance1> =
-        pallet_collective::GenesisConfig {
-            members: vec![ALICE],
-            phantom: Default::default(),
-        };
-
     config.assimilate_storage(&mut storage).unwrap();
     artists_config.assimilate_storage(&mut storage).unwrap();
-    technical_collective_config
-        .assimilate_storage(&mut storage)
-        .unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
     ext.execute_with(|| {
-        // assert_ok!(TechnicalCommittee::init_members(Origin::root(), ALICE));
         System::set_block_number(1);
     });
     ext

@@ -15,7 +15,7 @@ pub use types::*;
 use frame_support::{
     dispatch::DispatchError,
     dispatch::DispatchResult,
-    traits::{ChangeMembers, Currency, InitializeMembers, ReservableCurrency},
+    traits::{Currency, ReservableCurrency},
     Blake2_128Concat, BoundedVec,
 };
 use sp_std::prelude::*;
@@ -41,16 +41,7 @@ pub mod pallet {
         type Currency: ReservableCurrency<Self::AccountId>;
 
         /// Who can certificate an Artist
-        type ArtistsManagerOrigin: EnsureOrigin<Self::Origin>;
-
-        /// The receiver of the signal for when the membership has been initialized.
-        /// This happens pre-genesis and will usually be the same as `MembershipChanged`.
-        /// If you need to do something different on initialization, then you can change
-        /// this accordingly.
-        type MembershipInitialized: InitializeMembers<Self::AccountId>;
-
-        /// The receiver of the signal for when the members have changed.
-        type MembershipChanged: ChangeMembers<Self::AccountId>;
+        type AdminOrigin: EnsureOrigin<Self::Origin>;
 
         /// The deposit needed for creating an artist account.
         #[pallet::constant]
@@ -265,9 +256,7 @@ pub mod pallet {
         /// May only be called from `T::AdminOrigin`.
         #[pallet::weight(0)]
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
-            // TODO: Use collective based origin
-            ensure_root(origin)?;
-            // T::ArtistsManagerOrigin::ensure_origin(origin.clone())?;
+            T::AdminOrigin::ensure_origin(origin.clone())?;
 
             if Self::is_artist(&who) {
                 return Err(Error::<T>::AlreadyAnArtist)?;
