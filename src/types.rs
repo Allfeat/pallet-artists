@@ -30,7 +30,6 @@ pub struct Candidate<T: Config> {
     pub(super) name: BoundedVec<u8, T::NameMaxLength>,
     /// The block number when the candidature was submitted
     pub(super) created_at: T::BlockNumber,
-    // TODO: add the kyc_id
 }
 
 impl<T> From<Candidate<T>> for Artist<T>

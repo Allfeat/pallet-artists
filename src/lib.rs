@@ -22,9 +22,6 @@ use sp_std::prelude::*;
 
 pub use pallet::*;
 
-// TODO: Link with pallet_collective or pallet_membership
-// TODO: Link with pallet_identity (eg: MinRankOfClass from ranked-collective)
-
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
@@ -100,7 +97,6 @@ pub mod pallet {
         }
     }
 
-    // TODO: Duplicate code between artist and candidate loops
     #[pallet::genesis_build]
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
@@ -271,9 +267,7 @@ pub mod pallet {
         /// For simplicity, this function use membership managed rights.
         /// Later, a more complex validation logic could be implemented.
         ///
-        /// May only be called from `T::ApproveOrigin`.
-        ///
-        /// TODO: impl kyc verification
+        /// May only be called from `T::AdminOrigin`.
         #[pallet::weight(0)]
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
             // TODO: Use collective based origin

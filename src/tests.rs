@@ -5,12 +5,6 @@ use frame_support::{assert_noop, assert_ok, ensure};
 use frame_system::{ensure_signed, pallet_prelude::OriginFor};
 use sp_runtime::traits::BadOrigin;
 
-// TODO: Add event tests
-// TODO: Add tests for member vec max length
-// TODO: For now, only Root have the greatest rights, test with halfOfCouncil
-// TODO: Add update artist data tests
-// TODO: Refactor duplicate code between Artist and Candidate #DRY
-
 // Test accounts used
 pub const ALICE: <Test as frame_system::Config>::AccountId = 0; // Root, Artist
 pub const BOB: <Test as frame_system::Config>::AccountId = 1; // Candidate
@@ -59,8 +53,6 @@ fn genesis_config() {
 
         assert_eq!(alice_reserve, deposit);
         assert_eq!(alice_balance, 100 - deposit);
-
-        // TODO assert!(ArtistCommittee::is_member(&ALICE))
 
         // Test genesis from artists:
         // ==========================

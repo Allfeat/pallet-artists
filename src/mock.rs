@@ -99,8 +99,8 @@ impl pallet_collective::Config<TechnicalCollective> for Test {
 type HalfOfCouncilOrigin =
     pallet_collective::EnsureProportionAtLeast<AccountId, TechnicalCollective, 1, 2>;
 
-// TODO: Why the following does not work with ArtistMamagerOrigin?
-//   type EnsureRootOrHalfCouncil = EnsureOneOf<
+// Warning: it works on `cargo check`, `cargo build` but not in `cargo test`
+// type EnsureRootOrHalfCouncil = EnsureOneOf<
 //     EnsureRoot<AccountId>,
 //     pallet_collective::EnsureProportionMoreThan<AccountId, TechnicalCommittee, 1, 2>,
 // >;
