@@ -267,28 +267,6 @@ pub mod pallet {
             Ok(())
         }
 
-        // Note: we don't want let the artist to edits his name,
-        // this is an example of an edit function only for artists.
-        // TODO: Add a real field like Song Style or Description instead
-        #[pallet::weight(0)]
-        pub fn edit_name(origin: OriginFor<T>, name: Vec<u8>) -> DispatchResult {
-            let who = Self::ensure_artist(origin)?;
-
-            // Update the name
-            Artists::<T>::try_mutate(&who, |maybe_value| -> DispatchResult {
-                let artist = maybe_value.take().ok_or(Error::<T>::ArtistNotFound)?;
-                let name: BoundedVec<u8, T::NameMaxLength> =
-                    name.try_into().map_err(|_| Error::<T>::NameTooLong)?;
-
-                *maybe_value = Some(Artist { name, ..artist });
-                Ok(())
-            })?;
-
-            Self::deposit_event(Event::<T>::ArtistUpdated(who));
-
-            Ok(())
-        }
-
         /// Approve a candidate and level up his account the an artist.
         /// For simplicity, this function use membership managed rights.
         /// Later, a more complex validation logic could be implemented.
