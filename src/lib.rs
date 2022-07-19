@@ -246,12 +246,7 @@ pub mod pallet {
         /// Withdraw candidacy to become an artist and get deposit back.
         #[pallet::weight(0)]
         pub fn withdraw_candidacy(origin: OriginFor<T>) -> DispatchResult {
-            let caller = ensure_signed(origin)?;
-
-            // TODO: Ensure origin is in the candidate collective instead
-            if !Self::is_candidate(&caller) {
-                return Err(Error::<T>::NotACandidate)?;
-            }
+            let caller = Self::ensure_candidate(origin)?;
 
             <Candidates<T>>::remove(&caller);
 

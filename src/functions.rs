@@ -13,15 +13,23 @@ impl<T: Config> Pallet<T> {
         <Candidates<T>>::contains_key(account_id)
     }
 
-    /// Function with the same API of `ensure_signed()`
-    /// that check if the origin is an artist (via membership)
-    // TODO: Replace this by T::Collective_ABC::ensure_origin()
+    /// Ensure that the caller is an artist sending a signed tx
+    /// Same API of `ensure_signed()`
     pub fn ensure_artist(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
-        let who = ensure_signed(origin)?;
-        if Self::is_artist(&who) {
+        let caller = ensure_signed(origin)?;
+        if !Self::is_artist(&caller) {
             return Err(Error::<T>::NotAnArtist)?;
         }
-        Ok(who)
+        Ok(caller)
+    }
+    /// Ensure that the caller is an artist sending a signed tx
+    /// Same API of `ensure_signed()`
+    pub fn ensure_candidate(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
+        let caller = ensure_signed(origin)?;
+        if !Self::is_candidate(&caller) {
+            return Err(Error::<T>::NotACandidate)?;
+        }
+        Ok(caller)
     }
 
     pub fn reserve_deposit(caller: &T::AccountId) -> DispatchResult {
