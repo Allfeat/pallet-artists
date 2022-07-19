@@ -41,14 +41,16 @@ fn genesis_config() {
     new_test_ext(true).execute_with(|| {
         // Test genesis from artists:
         // ==========================
-        assert!(
-            ArtistsPallet::get_artist(ALICE)
-                == Some(Artist {
-                    account_id: ALICE,
-                    name: b"Genesis Alice".to_vec().try_into().unwrap(),
-                    created_at: 0
-                })
-        );
+        let artist = ArtistsPallet::get_artist(ALICE).unwrap();
+        let expected_artist: Artist<mock::Test> = Artist {
+            account_id: ALICE,
+            name: b"Genesis Alice".to_vec().try_into().unwrap(),
+            created_at: 0,
+        };
+
+        assert!(artist.account_id == expected_artist.account_id);
+        assert!(artist.name == expected_artist.name);
+        assert!(artist.created_at == expected_artist.created_at);
 
         // Ensure that the deposit is also effected in the genesis build
         let deposit = CreationDepositAmount::get();
@@ -62,14 +64,16 @@ fn genesis_config() {
 
         // Test genesis from artists:
         // ==========================
-        assert!(
-            ArtistsPallet::get_candidate(BOB)
-                == Some(Candidate {
-                    account_id: BOB,
-                    name: b"Genesis Bob".to_vec().try_into().unwrap(),
-                    created_at: 0
-                })
-        );
+        let candidate = ArtistsPallet::get_candidate(BOB).unwrap();
+        let expected_candidate: Candidate<mock::Test> = Candidate {
+            account_id: BOB,
+            name: b"Genesis Bob".to_vec().try_into().unwrap(),
+            created_at: 0,
+        };
+
+        assert!(candidate.account_id == expected_candidate.account_id);
+        assert!(candidate.name == expected_candidate.name);
+        assert!(candidate.created_at == expected_candidate.created_at);
 
         // Ensure that the deposit is also effected in the genesis build
         let deposit = CreationDepositAmount::get();

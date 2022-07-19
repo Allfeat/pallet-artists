@@ -36,7 +36,7 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config {
+    pub trait Config: frame_system::Config + TypeInfo {
         /// Let the pallet to emit events
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -74,23 +74,13 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn get_candidate)]
-    pub(super) type Candidates<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        Candidate<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
-        OptionQuery,
-    >;
+    pub(super) type Candidates<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Candidate<T>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_artist)]
-    pub(super) type Artists<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        Artist<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
-        OptionQuery,
-    >;
+    pub(super) type Artists<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Artist<T>, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -290,11 +280,7 @@ pub mod pallet {
                 let name: BoundedVec<u8, T::NameMaxLength> =
                     name.try_into().map_err(|_| Error::<T>::NameTooLong)?;
 
-                *maybe_value = Some(Artist {
-                    name,
-                    ..artist.clone()
-                });
-
+                *maybe_value = Some(Artist { name, ..artist });
                 Ok(())
             })?;
 
@@ -320,12 +306,11 @@ pub mod pallet {
                 return Err(Error::<T>::AlreadyAnArtist)?;
             }
 
-            let candidate =
-                <Candidates<T>>::try_get(&who).or_else(|_| Err(Error::<T>::CandidateNotFound))?;
-
             // Create an Artist from the candidate and store it on-chain
-            let created_at: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
-            let artist = Artist::from_candidate(candidate, created_at);
+            let artist: Artist<T> = <Candidates<T>>::try_get(&who)
+                .or_else(|_| Err(Error::<T>::CandidateNotFound))?
+                .into();
+
             <Artists<T>>::insert(who.clone(), artist);
 
             // Then remove the candidature
