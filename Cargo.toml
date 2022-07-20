@@ -25,7 +25,6 @@ frame-support = { version = "4.0.0-dev", default-features = false, git = "https:
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat", optional = true }
 pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
-pallet-membership = { version = "4.0.0-dev", default-features = false, git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
 
 [dev-dependencies]
 sp-core = { version = "6.0.0", git = "https://github.com/SailorSnoW/substrate.git", branch = "allfeat" }
@@ -48,12 +47,12 @@ std = [
 	"pallet-assets/std",
 	"pallet-balances/std",
 	"pallet-collective/std",
-	"pallet-membership/std",
 ]
 
 runtime-benchmarks = [
 	"frame-benchmarking/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
+	"pallet-collective/runtime-benchmarks"
 ]
 try-runtime = ["frame-support/try-runtime"]
