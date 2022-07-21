@@ -6,10 +6,12 @@ use frame_support::{assert_noop, assert_ok, ensure};
 use frame_system::{ensure_signed, pallet_prelude::OriginFor};
 use sp_runtime::traits::BadOrigin;
 
+type AccountId = <Test as frame_system::Config>::AccountId;
+
 // Test accounts used
-pub const ALICE: <Test as frame_system::Config>::AccountId = 0; // Root, Artist
-pub const BOB: <Test as frame_system::Config>::AccountId = 1; // Candidate
-pub const JOHN: <Test as frame_system::Config>::AccountId = 2; // Nothing
+pub const ALICE: AccountId = 0; // Root, Artist
+pub const BOB: AccountId = 1; // Candidate
+pub const JOHN: AccountId = 2; // Nothing
 
 /// Helper function that generates a random string from a given length
 /// Should only be used for testing purpose
@@ -50,7 +52,7 @@ impl<T: Config> Pallet<T> {
 
 /// Genesis tests
 #[test]
-fn genesis_config() {
+fn test_genesis_config() {
     new_test_ext(true).execute_with(|| {
         // Test genesis from artists:
         // ==========================
@@ -220,7 +222,7 @@ fn test_withdraw_candidacy() {
 }
 
 #[test]
-fn approve_candidacy_to_artist() {
+fn test_approve_candidacy_to_artist() {
     new_test_ext(true).execute_with(|| {
         // An candidate cannot approve itself
         assert_noop!(
@@ -257,7 +259,7 @@ fn approve_candidacy_to_artist() {
 }
 
 #[test]
-fn caller_is_artist() {
+fn test_caller_is_artist() {
     new_test_ext(true).execute_with(|| {
         // Should execute the extrinsic as `ALICE` is in the artists group
         assert_ok!(ArtistsPallet::test_caller_is_artist(Origin::signed(ALICE)));
@@ -271,7 +273,7 @@ fn caller_is_artist() {
 }
 
 #[test]
-fn caller_is_candidate() {
+fn test_caller_is_candidate() {
     new_test_ext(true).execute_with(|| {
         // Should execute the extrinsic as `BOB` is in the candidate list
         assert_ok!(ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)));

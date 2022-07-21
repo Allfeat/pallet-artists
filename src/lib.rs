@@ -47,14 +47,6 @@ pub mod pallet {
         #[pallet::constant]
         type CreationDepositAmount: Get<BalanceOf<Self>>;
 
-        /// The maximum number of artists that can be stored.
-        #[pallet::constant]
-        type MaxArtists: Get<u32>;
-
-        /// The maximum number of candidates that can be stored.
-        #[pallet::constant]
-        type MaxCandidates: Get<u32>;
-
         /// The maximum length of an artist name or symbol stored on-chain.
         #[pallet::constant]
         type NameMaxLength: Get<u32>;
@@ -179,8 +171,6 @@ pub mod pallet {
         // =========================
         /// The account is already in the candidate list
         AlreadyACandidate,
-        /// The number of artists stored exceeded `T::MaxCandidates`.
-        ExceedCandidateBound,
         /// The wanted candidate is not found in the Candidates Storage
         CandidateNotFound,
         /// The caller isn't in the candidate list.
@@ -190,8 +180,6 @@ pub mod pallet {
         // ======================
         /// This account already is a certificated artist account.
         AlreadyAnArtist,
-        /// The number of artists stored exceeded `T::MaxArtists`.
-        ExceedArtistBound,
         /// The caller isn't a verified artist.
         NotAnArtist,
         /// The wanted artist is not found in the Artists Storage
@@ -214,22 +202,15 @@ pub mod pallet {
             ensure!(!Self::is_artist(&caller), Error::<T>::AlreadyAnArtist);
             ensure!(!Self::is_candidate(&caller), Error::<T>::AlreadyACandidate);
 
-            // Check and format candidate attributes
-            let name: BoundedVec<u8, T::NameMaxLength> =
-                name.try_into().map_err(|_| Error::<T>::NameTooLong)?;
-            let created_at: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
+            let candidate = Candidate {
+                account_id: caller.clone(),
+                name: name.try_into().map_err(|_| Error::<T>::NameTooLong)?,
+                created_at: <frame_system::Pallet<T>>::block_number(),
+            };
 
             Self::reserve_deposit(&caller)?;
 
-            // Create the candidate and store it on-chain
-            <Candidates<T>>::insert(
-                caller.clone(),
-                Candidate {
-                    account_id: caller.clone(),
-                    name,
-                    created_at,
-                },
-            );
+            <Candidates<T>>::insert(caller.clone(), candidate);
 
             Self::deposit_event(Event::<T>::CandidateAdded(caller));
 
@@ -258,20 +239,19 @@ pub mod pallet {
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
             T::AdminOrigin::ensure_origin(origin)?;
 
-            if Pallet::<T>::is_artist(&who) {
-                return Err(Error::<T>::AlreadyAnArtist)?;
-            }
+            ensure!(!Self::is_artist(&who), Error::<T>::AlreadyAnArtist);
 
-            // Create an Artist from the candidate and store it on-chain
-            let mut artist: Artist<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber> =
-                <Candidates<T>>::try_get(&who)
-                    .or_else(|_| Err(Error::<T>::CandidateNotFound))?
-                    .into();
-            artist.created_at = <frame_system::Pallet<T>>::block_number();
+            let candidate =
+                <Candidates<T>>::try_get(&who).or_else(|_| Err(Error::<T>::CandidateNotFound))?;
+
+            let artist = Artist {
+                account_id: who.clone(),
+                name: candidate.name,
+                created_at: <frame_system::Pallet<T>>::block_number(),
+            };
 
             <Artists<T>>::insert(who.clone(), artist);
 
-            // Then remove the candidature
             <Candidates<T>>::remove(&who);
 
             Self::deposit_event(Event::<T>::CandidateApproved(who));
