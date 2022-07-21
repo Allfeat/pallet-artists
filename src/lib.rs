@@ -10,24 +10,17 @@ pub mod tests;
 
 mod functions;
 mod types;
-pub mod weights;
 pub use types::*;
 
-use codec::HasCompact;
 use frame_support::{
     dispatch::DispatchError,
     dispatch::DispatchResult,
-    traits::{
-        fungibles::{metadata::Mutate as MetadataMutate, Create, Mutate},
-        ChangeMembers, Currency, InitializeMembers,
-    },
+    traits::{Currency, ReservableCurrency},
     Blake2_128Concat, BoundedVec,
 };
-use sp_runtime::traits::{AtLeast32BitUnsigned, StaticLookup};
 use sp_std::prelude::*;
 
 pub use pallet::*;
-pub use weights::WeightInfo;
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -37,253 +30,235 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T, I = ()>(_);
+    pub struct Pallet<T>(_);
 
-    // Pallet configuration
     #[pallet::config]
-    pub trait Config<I: 'static = ()>: frame_system::Config {
-        type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+    pub trait Config: frame_system::Config + TypeInfo {
+        /// Let the pallet to emit events
+        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
-        /// The units in which we record balances.
-        type Balance: Member
-            + Parameter
-            + AtLeast32BitUnsigned
-            + Default
-            + Copy
-            + MaybeSerializeDeserialize
-            + MaxEncodedLen
-            + TypeInfo;
+        /// Used for candidate/artist deposit
+        type Currency: ReservableCurrency<Self::AccountId>;
 
-        type Currency: Currency<Self::AccountId>;
+        /// Who can certificate an Artist
+        type AdminOrigin: EnsureOrigin<Self::Origin>;
 
-        /// The identifier of an artist
-        type ArtistId: Member
-            + Parameter
-            + Default
-            + Copy
-            + HasCompact
-            + MaybeSerializeDeserialize
-            + MaxEncodedLen
-            + TypeInfo;
-
-        /// Identifier for the class of asset.
-        type AssetId: Member
-            + Parameter
-            + Default
-            + Copy
-            + HasCompact
-            + MaybeSerializeDeserialize
-            + MaxEncodedLen
-            + TypeInfo
-            + From<Self::ArtistId>;
-
-        type Assets: Create<Self::AccountId, AssetId = Self::AssetId, Balance = Self::Balance>
-            + Mutate<Self::AccountId, AssetId = Self::AssetId, Balance = Self::Balance>
-            + MetadataMutate<Self::AccountId, AssetId = Self::AssetId>;
-
-        type ArtistGroup: ChangeMembers<Self::AccountId> + InitializeMembers<Self::AccountId>;
+        /// The deposit needed for creating an artist account.
+        #[pallet::constant]
+        type CreationDepositAmount: Get<BalanceOf<Self>>;
 
         /// The maximum number of artists that can be stored.
         #[pallet::constant]
         type MaxArtists: Get<u32>;
 
+        /// The maximum number of candidates that can be stored.
+        #[pallet::constant]
+        type MaxCandidates: Get<u32>;
+
         /// The maximum length of an artist name or symbol stored on-chain.
         #[pallet::constant]
-        type StringLimit: Get<u32>;
-
-        #[pallet::constant]
-        type DefaultSupply: Get<Self::Balance>;
-
-        #[pallet::constant]
-        type MinBalance: Get<Self::Balance>;
-
-        #[pallet::constant]
-        type Decimals: Get<u8>;
-
-        type WeightInfo: WeightInfo;
+        type NameMaxLength: Get<u32>;
     }
 
     #[pallet::storage]
-    pub(super) type Members<T: Config<I>, I: 'static = ()> =
-        StorageValue<_, BoundedVec<T::AccountId, T::MaxArtists>, ValueQuery>;
+    #[pallet::getter(fn get_candidate)]
+    pub(super) type Candidates<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Candidate<T>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_artist)]
-    pub(super) type ArtistStorage<T: Config<I>, I: 'static = ()> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::ArtistId,
-        ArtistInfos<T::ArtistId, T::AccountId, BoundedVec<u8, T::StringLimit>, T::BlockNumber>,
-        OptionQuery,
-    >;
+    pub(super) type Artists<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, Artist<T>, OptionQuery>;
 
     #[pallet::genesis_config]
-    pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
-        /// The exisiting artists at the genesis
-        pub artists: Vec<(T::ArtistId, T::AccountId, Vec<u8>, Vec<u8>, Vec<u8>)>,
+    pub struct GenesisConfig<T: Config> {
+        /// The existing artists at the genesis
+        pub artists: Vec<(T::AccountId, Vec<u8>)>,
+        /// The existing candidates at the genesis
+        pub candidates: Vec<(T::AccountId, Vec<u8>)>,
     }
 
     #[cfg(feature = "std")]
-    impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
+    impl<T: Config> Default for GenesisConfig<T> {
         fn default() -> Self {
             Self {
                 artists: Default::default(),
+                candidates: Default::default(),
             }
         }
     }
 
     #[pallet::genesis_build]
-    impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
+    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
-            let mut accounts: Vec<T::AccountId> = Vec::new();
+            for (account_id, name) in &self.artists {
+                let name: BoundedVec<u8, T::NameMaxLength> = name
+                    .clone()
+                    .try_into()
+                    .expect("Error while formatting the artist name");
 
-            for (id, account, name, asset_name, asset_symbol) in &self.artists {
-                assert!(
-                    !ArtistStorage::<T, I>::contains_key(id),
-                    "Artist ID already in use"
-                );
+                if Artists::<T>::contains_key(&account_id) {
+                    panic!("Artist already added to the list")
+                }
 
-                let artist_name: BoundedVec<u8, T::StringLimit> =
-                    name.clone().try_into().expect("name is too long");
-                let age: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
+                T::Currency::reserve(&account_id, T::CreationDepositAmount::get())
+                    .expect("Could not reverse deposit for the candidate");
 
-                // Create, set the metadatas and mint the supply of the artist asset
-                T::Assets::create(
-                    id.clone().into(),
-                    account.clone(),
-                    false,
-                    T::MinBalance::get(),
-                )
-                .unwrap();
-                // Set the metadatas of the artist asset
-                T::Assets::set(
-                    id.clone().into(),
-                    &account,
-                    asset_name.to_vec(),
-                    asset_symbol.to_vec(),
-                    T::Decimals::get(),
-                )
-                .unwrap();
-                // Mint the default supply of the artist asset
-                T::Assets::mint_into(id.clone().into(), &account, T::DefaultSupply::get()).unwrap();
+                let artist = Artist {
+                    account_id: account_id.clone(),
+                    name,
+                    created_at: <frame_system::Pallet<T>>::block_number(),
+                };
 
-                // Inserting the new artist datas in the storage
-                ArtistStorage::<T, I>::insert(
-                    id,
-                    ArtistInfos {
-                        id: *id,
-                        account: account.clone(),
-                        name: artist_name.clone(),
-                        age,
-                    },
-                );
-
-                let location = accounts
-                    .binary_search(&account)
-                    .err()
-                    .ok_or(Error::<T, I>::AlreadyUsedAcc)
-                    .unwrap();
-                accounts.insert(location, account.clone());
+                Artists::<T>::insert(&account_id, artist);
             }
 
-            // Initializing the upstream artist group if any
-            T::ArtistGroup::initialize_members(&accounts[..]);
+            for (account_id, name) in &self.candidates {
+                let name: BoundedVec<u8, T::NameMaxLength> = name
+                    .clone()
+                    .try_into()
+                    .expect("Error while formatting the candidate name");
 
-            // Store the genesis artist accounts
-            let bounded_accounts: BoundedVec<T::AccountId, T::MaxArtists> =
-                accounts.try_into().unwrap();
-            Members::<T, I>::put(bounded_accounts);
+                if Candidates::<T>::contains_key(&account_id) {
+                    panic!("Candidate already added to the list")
+                }
+
+                T::Currency::reserve(&account_id, T::CreationDepositAmount::get())
+                    .expect("Could not reverse deposit for the candidate");
+
+                let candidate = Candidate {
+                    account_id: account_id.clone(),
+                    name,
+                    created_at: <frame_system::Pallet<T>>::block_number(),
+                };
+
+                Candidates::<T>::insert(&account_id, candidate);
+            }
         }
     }
 
     #[pallet::event]
     #[pallet::generate_deposit(pub(super) fn deposit_event)]
-    pub enum Event<T: Config<I>, I: 'static = ()> {
-        /// An artist was created.
-        ArtistCreated {
-            artist_id: T::ArtistId,
-            name: BoundedVec<u8, T::StringLimit>,
-            block: T::BlockNumber,
-        },
+    pub enum Event<T: Config> {
+        // Candidate events:
+        // =================
+        /// An entity has issued a candidacy. See the transaction for who.
+        CandidateAdded(T::AccountId),
+        /// An entity withdrew candidacy. See the transaction for who.
+        CandidateWithdrew(T::AccountId),
+        /// An artist was created from a candidate after approbation.
+        /// This artist is also added to the artist membership
+        CandidateApproved(T::AccountId),
+
+        // Artist events:
+        // ==============
+        /// An artist has been updated
+        ArtistUpdated(T::AccountId),
     }
 
     #[pallet::error]
-    pub enum Error<T, I = ()> {
-        /// The artist id is already used.
-        AlreadyExist,
-        /// The given string is longer than `T::StringLimit`.
-        StringTooLong,
-        /// The given string is  too short to be valid.
-        StringTooShort,
-        /// The account is already attributed to an artist.
-        AlreadyUsedAcc,
+    pub enum Error<T> {
+        // General errors:
+        // ===============
+        /// The caller doesn't have enough funds for the deposit
+        NotEnoughFunds,
+        /// The given string is longer than `T::NameMaxLength`.
+        NameTooLong,
+
+        // Candidate related errors:
+        // =========================
+        /// The account is already in the candidate list
+        AlreadyACandidate,
+        /// The number of artists stored exceeded `T::MaxCandidates`.
+        ExceedCandidateBound,
+        /// The wanted candidate is not found in the Candidates Storage
+        CandidateNotFound,
+        /// The caller isn't in the candidate list.
+        NotACandidate,
+
+        // Artist related errors:
+        // ======================
+        /// This account already is a certificated artist account.
+        AlreadyAnArtist,
         /// The number of artists stored exceeded `T::MaxArtists`.
         ExceedArtistBound,
         /// The caller isn't a verified artist.
         NotAnArtist,
+        /// The wanted artist is not found in the Artists Storage
+        ArtistNotFound,
     }
 
     #[pallet::call]
-    impl<T: Config<I>, I: 'static> Pallet<T, I> {
-        /// Create and insert a new artist.
+    impl<T: Config> Pallet<T> {
+        /// To be an artist, the caller have to candidate first.
+        /// This will create the candidate profile with the given fields:
         ///
-        /// Must be called from the root origin.
+        /// `name:` The name of the artist.
         ///
-        /// The artist asset is initalized with the same ID than the artist and with a supply of `T::DefaultSupply`.
-        ///
-        /// Parameters:
-        /// - `id`: The ID of the new artist to create.
-        /// - `asset_id`: The ID of the artist asset to create.
-        /// - `account`: The main account of the artist.
-        /// - `name`: The name of the artist.
-        /// Should be less or equal than `T::StringLimit`.
-        /// - `asset_name`: The name of the artist asset.
-        /// - `asset_symbol`: The symbol of the artist asset.
-        ///
-        /// Emits `ArtistCreated` when the artist is successfuly inserted in storage.
-        #[pallet::weight(T::WeightInfo::force_create(name.len() as u32, asset_name.len() as u32, asset_symbol.len() as u32,))]
-        pub fn force_create(
-            origin: OriginFor<T>,
-            #[pallet::compact] id: T::ArtistId,
-            account: <T::Lookup as StaticLookup>::Source,
-            name: Vec<u8>,
-            asset_name: Vec<u8>,
-            asset_symbol: Vec<u8>,
-        ) -> DispatchResult {
-            let acc = T::Lookup::lookup(account)?;
+        /// NOTE: This can only be done once for an account.
+        #[pallet::weight(0)]
+        pub fn submit_candidacy(origin: OriginFor<T>, name: Vec<u8>) -> DispatchResult {
+            let caller = ensure_signed(origin)?;
 
-            ensure_root(origin)?;
-            ensure!(
-                !ArtistStorage::<T, I>::contains_key(id),
-                Error::<T, I>::AlreadyExist
-            );
+            // Check if the caller isn't neither a candidate nor an artist
+            ensure!(!Self::is_artist(&caller), Error::<T>::AlreadyAnArtist);
+            ensure!(!Self::is_candidate(&caller), Error::<T>::AlreadyACandidate);
 
-            let artist_name: BoundedVec<u8, T::StringLimit> =
-                name.try_into().expect("name is too long");
-            let age: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
+            // Check and format candidate attributes
+            let name: BoundedVec<u8, T::NameMaxLength> =
+                name.try_into().map_err(|_| Error::<T>::NameTooLong)?;
+            let created_at: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
 
-            // Create, set the metadatas and mint the supply of the artist asset
-            Self::create_and_init_asset(id.into(), acc.clone(), asset_name, asset_symbol)?;
+            Self::reserve_deposit(&caller)?;
 
-            Self::add_artist_account(acc.clone())?;
-
-            // Inserting the new artist in the storage
-            ArtistStorage::<T, I>::insert(
-                id,
-                ArtistInfos {
-                    id,
-                    account: acc,
-                    name: artist_name.clone(),
-                    age,
+            // Create the candidate and store it on-chain
+            <Candidates<T>>::insert(
+                caller.clone(),
+                Candidate {
+                    account_id: caller.clone(),
+                    name,
+                    created_at,
                 },
             );
 
-            Self::deposit_event(Event::ArtistCreated {
-                artist_id: id,
-                name: artist_name,
-                block: age,
-            });
+            Self::deposit_event(Event::<T>::CandidateAdded(caller));
 
+            Ok(())
+        }
+
+        /// Withdraw candidacy to become an artist and get deposit back.
+        #[pallet::weight(0)]
+        pub fn withdraw_candidacy(origin: OriginFor<T>) -> DispatchResult {
+            let caller = Self::ensure_candidate(origin)?;
+
+            <Candidates<T>>::remove(&caller);
+
+            // returns deposit to the caller
+            Self::unreserve_deposit(&caller)?;
+
+            Self::deposit_event(Event::<T>::CandidateWithdrew(caller));
+
+            Ok(())
+        }
+
+        /// Approve a candidate and level up his account to be an artist.
+        ///
+        /// May only be called from `T::AdminOrigin`.
+        #[pallet::weight(0)]
+        pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
+            T::AdminOrigin::ensure_origin(origin)?;
+
+            // Create an Artist from the candidate and store it on-chain
+            let artist: Artist<T> = <Candidates<T>>::try_get(&who)
+                .or_else(|_| Err(Error::<T>::CandidateNotFound))?
+                .try_into()?;
+
+            <Artists<T>>::insert(who.clone(), artist);
+
+            // Then remove the candidature
+            <Candidates<T>>::remove(&who);
+
+            Self::deposit_event(Event::<T>::CandidateApproved(who));
             Ok(())
         }
     }

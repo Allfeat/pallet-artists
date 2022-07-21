@@ -1273,6 +1273,7 @@ dependencies = [
  "pallet-balances",
  "pallet-collective",
  "parity-scale-codec",
+ "rand 0.8.5",
  "scale-info",
  "sp-core",
  "sp-io",
