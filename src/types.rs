@@ -1,7 +1,7 @@
 use super::*;
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
-use std::convert::From;
+use std::convert::TryFrom;
 
 pub type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -32,16 +32,23 @@ pub struct Candidate<T: Config> {
     pub(super) created_at: T::BlockNumber,
 }
 
-impl<T> From<Candidate<T>> for Artist<T>
+impl<T> TryFrom<Candidate<T>> for Artist<T>
 where
-    T: Config + TypeInfo,
+    T: Config,
 {
-    fn from(candidate: Candidate<T>) -> Self {
+    type Error = Error<T>;
+
+    fn try_from(candidate: Candidate<T>) -> Result<Self, Self::Error> {
+        if Pallet::<T>::is_artist(&candidate.account_id) {
+            return Err(Error::<T>::AlreadyAnArtist)?;
+        }
+
         let created_at: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
-        Artist {
+
+        Ok(Artist {
             account_id: candidate.account_id,
             name: candidate.name,
             created_at,
-        }
+        })
     }
 }

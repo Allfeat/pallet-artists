@@ -131,8 +131,6 @@ pub(crate) fn new_test_ext(include_genesis: bool) -> sp_io::TestExternalities {
     artists_config.assimilate_storage(&mut storage).unwrap();
 
     let mut ext: sp_io::TestExternalities = storage.into();
-    ext.execute_with(|| {
-        System::set_block_number(1);
-    });
+    ext.execute_with(|| System::set_block_number(1));
     ext
 }

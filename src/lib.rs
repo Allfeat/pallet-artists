@@ -74,7 +74,7 @@ pub mod pallet {
     pub struct GenesisConfig<T: Config> {
         /// The existing artists at the genesis
         pub artists: Vec<(T::AccountId, Vec<u8>)>,
-        /// The existing artists at the genesis
+        /// The existing candidates at the genesis
         pub candidates: Vec<(T::AccountId, Vec<u8>)>,
     }
 
@@ -92,10 +92,6 @@ pub mod pallet {
     impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
         fn build(&self) {
             for (account_id, name) in &self.artists {
-                let who: T::AccountId = account_id
-                    .clone()
-                    .try_into()
-                    .expect("Error while getting the artist account id");
                 let name: BoundedVec<u8, T::NameMaxLength> = name
                     .clone()
                     .try_into()
@@ -109,7 +105,7 @@ pub mod pallet {
                     .expect("Could not reverse deposit for the candidate");
 
                 let artist = Artist {
-                    account_id: who,
+                    account_id: account_id.clone(),
                     name,
                     created_at: <frame_system::Pallet<T>>::block_number(),
                 };
@@ -118,10 +114,6 @@ pub mod pallet {
             }
 
             for (account_id, name) in &self.candidates {
-                let who: T::AccountId = account_id
-                    .clone()
-                    .try_into()
-                    .expect("Error while getting the candidate account id");
                 let name: BoundedVec<u8, T::NameMaxLength> = name
                     .clone()
                     .try_into()
@@ -135,7 +127,7 @@ pub mod pallet {
                     .expect("Could not reverse deposit for the candidate");
 
                 let candidate = Candidate {
-                    account_id: who,
+                    account_id: account_id.clone(),
                     name,
                     created_at: <frame_system::Pallet<T>>::block_number(),
                 };
@@ -249,23 +241,17 @@ pub mod pallet {
             Ok(())
         }
 
-        /// Approve a candidate and level up his account the an artist.
-        /// For simplicity, this function use membership managed rights.
-        /// Later, a more complex validation logic could be implemented.
+        /// Approve a candidate and level up his account to be an artist.
         ///
         /// May only be called from `T::AdminOrigin`.
         #[pallet::weight(0)]
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
-            T::AdminOrigin::ensure_origin(origin.clone())?;
-
-            if Self::is_artist(&who) {
-                return Err(Error::<T>::AlreadyAnArtist)?;
-            }
+            T::AdminOrigin::ensure_origin(origin)?;
 
             // Create an Artist from the candidate and store it on-chain
             let artist: Artist<T> = <Candidates<T>>::try_get(&who)
                 .or_else(|_| Err(Error::<T>::CandidateNotFound))?
-                .into();
+                .try_into()?;
 
             <Artists<T>>::insert(who.clone(), artist);
 

@@ -22,7 +22,7 @@ impl<T: Config> Pallet<T> {
         }
         Ok(caller)
     }
-    /// Ensure that the caller is an artist sending a signed tx
+    /// Ensure that the caller is a candidate sending a signed tx
     /// Same API of `ensure_signed()`
     pub fn ensure_candidate(origin: OriginFor<T>) -> Result<T::AccountId, DispatchError> {
         let caller = ensure_signed(origin)?;

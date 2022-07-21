@@ -1,5 +1,6 @@
 use super::*;
 use crate::mock::*;
+use rand::{thread_rng, Rng};
 
 use frame_support::{assert_noop, assert_ok, ensure};
 use frame_system::{ensure_signed, pallet_prelude::OriginFor};
@@ -9,6 +10,19 @@ use sp_runtime::traits::BadOrigin;
 pub const ALICE: <Test as frame_system::Config>::AccountId = 0; // Root, Artist
 pub const BOB: <Test as frame_system::Config>::AccountId = 1; // Candidate
 pub const JOHN: <Test as frame_system::Config>::AccountId = 2; // Nothing
+
+/// Helper function that generates a random string from a given length
+/// Should only be used for testing purpose
+fn generate_random_string(length: usize) -> String {
+    let chars: Vec<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
+    let mut result = String::with_capacity(length);
+    let mut rng = thread_rng();
+    for _ in 0..length {
+        let x: usize = rng.gen();
+        result.push(chars[x % chars.len()])
+    }
+    result
+}
 
 impl<T: Config> Pallet<T> {
     /// Simple extrinsic that success if the caller is a certified artist
@@ -42,9 +56,9 @@ fn genesis_config() {
             created_at: 0,
         };
 
-        assert!(artist.account_id == expected_artist.account_id);
-        assert!(artist.name == expected_artist.name);
-        assert!(artist.created_at == expected_artist.created_at);
+        assert_eq!(artist.account_id, expected_artist.account_id);
+        assert_eq!(artist.name, expected_artist.name);
+        assert_eq!(artist.created_at, expected_artist.created_at);
 
         // Ensure that the deposit is also effected in the genesis build
         let deposit = CreationDepositAmount::get();
@@ -63,9 +77,9 @@ fn genesis_config() {
             created_at: 0,
         };
 
-        assert!(candidate.account_id == expected_candidate.account_id);
-        assert!(candidate.name == expected_candidate.name);
-        assert!(candidate.created_at == expected_candidate.created_at);
+        assert_eq!(candidate.account_id, expected_candidate.account_id);
+        assert_eq!(candidate.name, expected_candidate.name);
+        assert_eq!(candidate.created_at, expected_candidate.created_at);
 
         // Ensure that the deposit is also effected in the genesis build
         let deposit = CreationDepositAmount::get();
@@ -80,13 +94,12 @@ fn genesis_config() {
 #[test]
 fn test_submit_candidacy_with_too_long_name() {
     new_test_ext(true).execute_with(|| {
+        let name = generate_random_string(60);
+
         assert_noop!(
             ArtistsPallet::submit_candidacy(
                 Origin::signed(JOHN),
-                b"qwertyuiopasdfghjklzxcvbnm qwertyuiopasdfghjklzxcvbnm"
-                    .to_vec()
-                    .try_into()
-                    .unwrap()
+                name.as_bytes().to_vec().try_into().unwrap()
             ),
             Error::<Test>::NameTooLong
         );
@@ -210,7 +223,7 @@ fn approve_candidacy_to_artist() {
         // Could not approve an artist twice
         assert_noop!(
             ArtistsPallet::approve_candidacy(Origin::root(), BOB),
-            Error::<Test>::AlreadyAnArtist
+            Error::<Test>::CandidateNotFound
         );
 
         // The artist is well added to the artist group
