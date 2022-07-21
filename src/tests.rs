@@ -1,5 +1,5 @@
 use super::*;
-use crate::mock::*;
+use crate::{mock::*, Event::*};
 use rand::{thread_rng, Rng};
 
 use frame_support::{assert_noop, assert_ok, ensure};
@@ -22,6 +22,11 @@ fn generate_random_string(length: usize) -> String {
         result.push(chars[x % chars.len()])
     }
     result
+}
+
+/// Panic is the given event is different that the last emitted event
+fn assert_last_event(event: Event<Test>) {
+    System::assert_last_event(mock::Event::ArtistsPallet(event))
 }
 
 impl<T: Config> Pallet<T> {
@@ -184,6 +189,8 @@ fn test_submit_candidacy() {
         assert_ok!(ArtistsPallet::test_caller_is_candidate(Origin::signed(
             JOHN
         )));
+
+        assert_last_event(CandidateAdded(JOHN));
     });
 }
 
@@ -207,6 +214,8 @@ fn test_withdraw_candidacy() {
             ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)),
             Error::<Test>::NotACandidate
         );
+
+        assert_last_event(CandidateWithdrew(BOB));
     });
 }
 
@@ -227,6 +236,8 @@ fn approve_candidacy_to_artist() {
 
         // Root could approve an artist
         assert_ok!(ArtistsPallet::approve_candidacy(Origin::root(), BOB));
+
+        assert_last_event(CandidateApproved(BOB));
 
         // Could not approve an artist twice
         assert_noop!(
