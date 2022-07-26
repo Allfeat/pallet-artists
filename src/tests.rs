@@ -50,7 +50,11 @@ fn genesis_config() {
         // Test genesis from artists:
         // ==========================
         let artist = ArtistsPallet::get_artist(ALICE).unwrap();
-        let expected_artist: Artist<mock::Test> = Artist {
+        let expected_artist: Artist<
+            <Test as frame_system::Config>::AccountId,
+            BoundedVec<u8, <Test as Config>::NameMaxLength>,
+            <Test as frame_system::Config>::BlockNumber,
+        > = Artist {
             account_id: ALICE,
             name: b"Genesis Alice".to_vec().try_into().unwrap(),
             created_at: 0,
@@ -71,7 +75,11 @@ fn genesis_config() {
         // Test genesis from artists:
         // ==========================
         let candidate = ArtistsPallet::get_candidate(BOB).unwrap();
-        let expected_candidate: Candidate<mock::Test> = Candidate {
+        let expected_candidate: Candidate<
+            <Test as frame_system::Config>::AccountId,
+            BoundedVec<u8, <Test as Config>::NameMaxLength>,
+            <Test as frame_system::Config>::BlockNumber,
+        > = Candidate {
             account_id: BOB,
             name: b"Genesis Bob".to_vec().try_into().unwrap(),
             created_at: 0,

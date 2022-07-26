@@ -1,7 +1,6 @@
 use super::*;
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
-use core::convert::TryFrom;
 
 pub type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -12,43 +11,34 @@ pub type BalanceOf<T> =
 
 /// Structure that holds the artist information that will be stored on-chain
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-pub struct Artist<T: Config> {
+pub struct Artist<AccountId, BoundedString, BlockNumber> {
     /// The identifier of the account of the artist.
-    pub(super) account_id: T::AccountId,
+    pub(super) account_id: AccountId,
     /// The name of the artist.
-    pub(super) name: BoundedVec<u8, T::NameMaxLength>,
+    pub(super) name: BoundedString,
     /// The block number when the artist was created
-    pub(super) created_at: T::BlockNumber,
+    pub(super) created_at: BlockNumber,
 }
 
 /// Structure that holds the candidate information that will be stored on-chain
 #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, MaxEncodedLen, TypeInfo)]
-pub struct Candidate<T: Config> {
+pub struct Candidate<AccountId, BoundedString, BlockNumber> {
     /// The identifier of the account of the candidate.
-    pub(super) account_id: T::AccountId,
+    pub(super) account_id: AccountId,
     /// The name of the future artist.
-    pub(super) name: BoundedVec<u8, T::NameMaxLength>,
+    pub(super) name: BoundedString,
     /// The block number when the candidature was submitted
-    pub(super) created_at: T::BlockNumber,
+    pub(super) created_at: BlockNumber,
 }
 
-impl<T> TryFrom<Candidate<T>> for Artist<T>
-where
-    T: Config,
+impl<AccountId, BoundedString, BlockNumber> From<Candidate<AccountId, BoundedString, BlockNumber>>
+    for Artist<AccountId, BoundedString, BlockNumber>
 {
-    type Error = Error<T>;
-
-    fn try_from(candidate: Candidate<T>) -> Result<Self, Self::Error> {
-        if Pallet::<T>::is_artist(&candidate.account_id) {
-            return Err(Error::<T>::AlreadyAnArtist)?;
-        }
-
-        let created_at: T::BlockNumber = <frame_system::Pallet<T>>::block_number();
-
-        Ok(Artist {
+    fn from(candidate: Candidate<AccountId, BoundedString, BlockNumber>) -> Self {
+        Artist {
             account_id: candidate.account_id,
             name: candidate.name,
-            created_at,
-        })
+            created_at: candidate.created_at,
+        }
     }
 }

@@ -33,7 +33,7 @@ pub mod pallet {
     pub struct Pallet<T>(_);
 
     #[pallet::config]
-    pub trait Config: frame_system::Config + TypeInfo {
+    pub trait Config: frame_system::Config {
         /// Let the pallet to emit events
         type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -62,13 +62,23 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn get_candidate)]
-    pub(super) type Candidates<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, Candidate<T>, OptionQuery>;
+    pub(super) type Candidates<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Candidate<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
+        OptionQuery,
+    >;
 
     #[pallet::storage]
     #[pallet::getter(fn get_artist)]
-    pub(super) type Artists<T: Config> =
-        StorageMap<_, Blake2_128Concat, T::AccountId, Artist<T>, OptionQuery>;
+    pub(super) type Artists<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        T::AccountId,
+        Artist<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
+        OptionQuery,
+    >;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -248,10 +258,16 @@ pub mod pallet {
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
             T::AdminOrigin::ensure_origin(origin)?;
 
+            if Pallet::<T>::is_artist(&who) {
+                return Err(Error::<T>::AlreadyAnArtist)?;
+            }
+
             // Create an Artist from the candidate and store it on-chain
-            let artist: Artist<T> = <Candidates<T>>::try_get(&who)
-                .or_else(|_| Err(Error::<T>::CandidateNotFound))?
-                .try_into()?;
+            let mut artist: Artist<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber> =
+                <Candidates<T>>::try_get(&who)
+                    .or_else(|_| Err(Error::<T>::CandidateNotFound))?
+                    .into();
+            artist.created_at = <frame_system::Pallet<T>>::block_number();
 
             <Artists<T>>::insert(who.clone(), artist);
 
