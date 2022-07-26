@@ -1,7 +1,7 @@
 use super::*;
 use frame_support::pallet_prelude::*;
 use scale_info::TypeInfo;
-use std::convert::TryFrom;
+use core::convert::TryFrom;
 
 pub type BalanceOf<T> =
     <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
