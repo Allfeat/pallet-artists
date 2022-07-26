@@ -10,6 +10,8 @@ pub mod tests;
 
 mod functions;
 mod types;
+mod impls;
+
 pub use types::*;
 
 use frame_support::{
