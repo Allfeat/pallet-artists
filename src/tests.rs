@@ -231,7 +231,7 @@ fn approve_candidacy_to_artist() {
         // Could not approve an artist twice
         assert_noop!(
             ArtistsPallet::approve_candidacy(Origin::root(), BOB),
-            Error::<Test>::CandidateNotFound
+            Error::<Test>::AlreadyAnArtist
         );
 
         // The artist is well added to the artist group
