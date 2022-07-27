@@ -16,22 +16,22 @@ codec = { package = "parity-scale-codec", version = "3.0.0", default-features = 
 scale-info = { version = "2.0.1", default-features = false, features = [
   "derive",
 ] }
-sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
+sp-std = { version = "4.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
 # Needed for various traits. In our case, `OnFinalize`.
-sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
+sp-runtime = { version = "6.0.0", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
 # Needed for type-safe access to storage DB.
-frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
+frame-support = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
 # `system` module provides us with all sorts of useful stuff and macros depend on it being around.
-frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
-frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat", optional = true }
+frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27", optional = true }
 
 [dev-dependencies]
-pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
-sp-core = { version = "6.0.0", git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
-sp-std = { version = "4.0.0", git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
-sp-io = { version = "6.0.0", git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
-pallet-assets = { version = "4.0.0-dev", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
-pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/All-feat/substrate.git", branch = "allfeat" }
+pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+sp-core = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+sp-std = { version = "4.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+sp-io = { version = "6.0.0", git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+pallet-assets = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
+pallet-balances = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
 rand = "0.8.5"
 
 
