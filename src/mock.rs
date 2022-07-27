@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     self as pallet_artists,
     mock::sp_api_hidden_includes_construct_runtime::hidden_include::traits::GenesisBuild,
-    tests::{ALICE, BOB, JOHN},
+    tests::{ALICE, BOB},
 };
 
 use frame_support::{
@@ -92,8 +92,6 @@ impl pallet_artists::Config for Test {
     type Currency = Balances;
     type AdminOrigin = EnsureRoot<AccountId>;
     type CreationDepositAmount = CreationDepositAmount;
-    type MaxArtists = MaxArtists;
-    type MaxCandidates = MaxCandidates;
     type NameMaxLength = NameMaxLength;
 }
 
@@ -115,8 +113,13 @@ pub(crate) fn new_test_ext(include_genesis: bool) -> sp_io::TestExternalities {
         .build_storage::<Test>()
         .unwrap();
 
+    // Give 100 tokens to the 100 first accounts
     let config: pallet_balances::GenesisConfig<Test> = pallet_balances::GenesisConfig {
-        balances: vec![(ALICE.into(), 100), (JOHN.into(), 100), (BOB.into(), 100)],
+        balances: (0..100)
+            .collect::<Vec<u64>>()
+            .iter()
+            .map(|&account_id| (account_id, 100))
+            .collect(),
     };
 
     let artists_config: pallet_artists::GenesisConfig<Test> = match include_genesis {

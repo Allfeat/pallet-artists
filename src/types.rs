@@ -30,15 +30,3 @@ pub struct Candidate<AccountId, BoundedString, BlockNumber> {
     /// The block number when the candidature was submitted
     pub(super) created_at: BlockNumber,
 }
-
-impl<AccountId, BoundedString, BlockNumber> From<Candidate<AccountId, BoundedString, BlockNumber>>
-    for Artist<AccountId, BoundedString, BlockNumber>
-{
-    fn from(candidate: Candidate<AccountId, BoundedString, BlockNumber>) -> Self {
-        Artist {
-            account_id: candidate.account_id,
-            name: candidate.name,
-            created_at: candidate.created_at,
-        }
-    }
-}
