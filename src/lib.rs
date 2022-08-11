@@ -9,8 +9,8 @@ pub mod mock;
 pub mod tests;
 
 mod functions;
-mod types;
 mod impls;
+mod types;
 
 pub use types::*;
 
@@ -32,7 +32,7 @@ pub mod pallet {
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
-    pub struct Pallet<T>(_);
+    pub struct Pallet<T>(PhantomData<T>);
 
     #[pallet::config]
     pub trait Config: frame_system::Config {
