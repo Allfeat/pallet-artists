@@ -1,5 +1,8 @@
 use super::*;
-use crate::{mock::*, Event::*};
+use crate::{
+    mock::{Origin, *},
+    Event::*,
+};
 use rand::{thread_rng, Rng};
 
 use frame_support::{assert_noop, assert_ok, ensure};
@@ -27,7 +30,7 @@ fn generate_random_string(length: usize) -> String {
 }
 
 /// Panic is the given event is different that the last emitted event
-fn assert_last_event(event: Event<Test>) {
+fn assert_last_event(event: pallet::Event<Test>) {
     System::assert_last_event(mock::Event::ArtistsPallet(event))
 }
 
@@ -113,7 +116,7 @@ fn test_submit_candidacy_with_too_long_name() {
 
         assert_noop!(
             ArtistsPallet::submit_candidacy(
-                Origin::signed(JOHN),
+                mock::Origin::signed(JOHN),
                 name.as_bytes().to_vec().try_into().unwrap()
             ),
             Error::<Test>::NameTooLong
