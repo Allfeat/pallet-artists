@@ -1,4 +1,3 @@
-use super::*;
 use crate::{
     self as pallet_artists,
     mock::sp_api_hidden_includes_construct_runtime::hidden_include::traits::GenesisBuild,
@@ -67,7 +66,7 @@ impl pallet_assets::Config for Test {
     type Balance = u64;
     type AssetId = u32;
     type Currency = Balances;
-    type ForceOrigin = frame_system::EnsureRoot<u64>;
+    type ForceOrigin = EnsureRoot<u64>;
     type AssetDeposit = ConstU64<1>;
     type AssetAccountDeposit = ConstU64<10>;
     type MetadataDepositBase = ConstU64<1>;

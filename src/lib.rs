@@ -14,15 +14,30 @@ mod types;
 
 pub use types::*;
 
+use core::marker::PhantomData;
+use frame_support::traits::EnsureOrigin;
 use frame_support::{
+    codec::{Decode, Encode, MaxEncodedLen},
     dispatch::DispatchError,
     dispatch::DispatchResult,
     traits::{Currency, ReservableCurrency},
     Blake2_128Concat, BoundedVec,
 };
+use scale_info::TypeInfo;
+use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
 pub use pallet::*;
+
+/// Origin for the collective module.
+#[derive(PartialEq, Eq, Clone, RuntimeDebug, Encode, Decode, TypeInfo, MaxEncodedLen)]
+#[codec(mel_bound(AccountId: MaxEncodedLen))]
+pub enum RawOrigin<AccountId> {
+    /// It has been condoned by a single artist.
+    Artist(AccountId),
+    /// It has been condoned by a single Candidate.
+    Candidate(AccountId),
+}
 
 #[frame_support::pallet]
 pub mod pallet {
@@ -53,6 +68,9 @@ pub mod pallet {
         #[pallet::constant]
         type NameMaxLength: Get<u32>;
     }
+
+    #[pallet::origin]
+    pub type Origin<T> = RawOrigin<<T as frame_system::Config>::AccountId>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_candidate)]
@@ -259,5 +277,49 @@ pub mod pallet {
             Self::deposit_event(Event::<T>::CandidateApproved(who));
             Ok(())
         }
+    }
+}
+
+pub struct EnsureArtist<AccountId>(PhantomData<AccountId>);
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId: Decode>
+    EnsureOrigin<O> for EnsureArtist<AccountId>
+{
+    type Success = AccountId;
+
+    fn try_origin(o: O) -> Result<Self::Success, O> {
+        o.into().and_then(|o| match o {
+            RawOrigin::Artist(id) => Ok(id),
+            _ => Err(O::from(o)),
+        })
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn try_successful_origin() -> Result<O, ()> {
+        let zero_account_id =
+            AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
+                .expect("infinite length input; no invalid inputs for type; qed");
+        Ok(O::from(RawOrigin::Artist(zero_account_id)))
+    }
+}
+
+pub struct EnsureCandidate<AccountId>(PhantomData<AccountId>);
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId: Decode>
+    EnsureOrigin<O> for EnsureCandidate<AccountId>
+{
+    type Success = AccountId;
+
+    fn try_origin(o: O) -> Result<Self::Success, O> {
+        o.into().and_then(|o| match o {
+            RawOrigin::Candidate(id) => Ok(id),
+            _ => Err(O::from(o)),
+        })
+    }
+
+    #[cfg(feature = "runtime-benchmarks")]
+    fn try_successful_origin() -> Result<O, ()> {
+        let zero_account_id =
+            AccountId::decode(&mut sp_runtime::traits::TrailingZeroInput::zeroes())
+                .expect("infinite length input; no invalid inputs for type; qed");
+        Ok(O::from(RawOrigin::Candidate(zero_account_id)))
     }
 }
