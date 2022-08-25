@@ -89,7 +89,9 @@ parameter_types! {
 impl pallet_artists::Config for Test {
     type Event = Event;
     type Currency = Balances;
+    type Origin = Origin;
     type AdminOrigin = EnsureRoot<AccountId>;
+    type Call = Call;
     type CreationDepositAmount = CreationDepositAmount;
     type NameMaxLength = NameMaxLength;
 }

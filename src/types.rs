@@ -30,3 +30,20 @@ pub struct Candidate<AccountId, BoundedString, BlockNumber> {
     /// The block number when the candidature was submitted
     pub(super) created_at: BlockNumber,
 }
+
+pub mod nft {
+    use super::*;
+
+    pub enum NftType {
+        Single,
+        Album,
+        Cover,
+    }
+
+    #[derive(Clone, Encode, Decode, Eq, PartialEq, RuntimeDebug, TypeInfo)]
+    pub struct Single {
+        title: Vec<u8>,
+        artists: Vec<Vec<u8>>,
+        label: Vec<u8>,
+    }
+}

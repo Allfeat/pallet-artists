@@ -43,6 +43,8 @@ pub enum RawOrigin<AccountId> {
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
+    use frame_support::traits::UnfilteredDispatchable;
+    use frame_support::weights::GetDispatchInfo;
     use frame_system::pallet_prelude::*;
 
     #[pallet::pallet]
@@ -57,8 +59,16 @@ pub mod pallet {
         /// Used for candidate/artist deposit
         type Currency: ReservableCurrency<Self::AccountId>;
 
+        /// The outer origin type.
+        type Origin: From<RawOrigin<Self::AccountId>>;
+
         /// Who can certificate an Artist
-        type AdminOrigin: EnsureOrigin<Self::Origin>;
+        type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+
+        type Call: Parameter
+            + UnfilteredDispatchable<Origin = <Self as Config>::Origin>
+            + From<frame_system::Call<Self>>
+            + GetDispatchInfo;
 
         /// The deposit needed for creating an artist account.
         #[pallet::constant]
@@ -276,6 +286,28 @@ pub mod pallet {
 
             Self::deposit_event(Event::<T>::CandidateApproved(who));
             Ok(())
+        }
+
+        #[pallet::weight(0)]
+        pub fn call_as_artist(
+            origin: OriginFor<T>,
+            call: Box<<T as Config>::Call>,
+        ) -> DispatchResultWithPostInfo {
+            let caller = ensure_signed(origin)?;
+            ensure!(Self::is_artist(&caller), Error::<T>::NotAnArtist);
+
+            call.dispatch_bypass_filter(RawOrigin::Artist(caller).into())
+        }
+
+        #[pallet::weight(0)]
+        pub fn call_as_candidate(
+            origin: OriginFor<T>,
+            call: Box<<T as Config>::Call>,
+        ) -> DispatchResultWithPostInfo {
+            let caller = ensure_signed(origin)?;
+            ensure!(Self::is_candidate(&caller), Error::<T>::NotACandidate);
+
+            call.dispatch_bypass_filter(RawOrigin::Candidate(caller).into())
         }
     }
 }
