@@ -60,17 +60,14 @@ fn test_genesis_config() {
         // Test genesis from artists:
         // ==========================
         let artist = ArtistsPallet::get_artist(ALICE).unwrap();
-        let expected_artist: Artist<
-            <Test as frame_system::Config>::AccountId,
+        let expected_artist: ArtistInfo<
             BoundedVec<u8, <Test as Config>::NameMaxLength>,
             <Test as frame_system::Config>::BlockNumber,
-        > = Artist {
-            account_id: ALICE,
+        > = ArtistInfo {
             name: b"Genesis Alice".to_vec().try_into().unwrap(),
             created_at: 0,
         };
 
-        assert_eq!(artist.account_id, expected_artist.account_id);
         assert_eq!(artist.name, expected_artist.name);
         assert_eq!(artist.created_at, expected_artist.created_at);
 
@@ -85,17 +82,14 @@ fn test_genesis_config() {
         // Test genesis from artists:
         // ==========================
         let candidate = ArtistsPallet::get_candidate(BOB).unwrap();
-        let expected_candidate: Candidate<
-            <Test as frame_system::Config>::AccountId,
+        let expected_candidate: CandidateInfo<
             BoundedVec<u8, <Test as Config>::NameMaxLength>,
             <Test as frame_system::Config>::BlockNumber,
-        > = Candidate {
-            account_id: BOB,
+        > = CandidateInfo {
             name: b"Genesis Bob".to_vec().try_into().unwrap(),
             created_at: 0,
         };
 
-        assert_eq!(candidate.account_id, expected_candidate.account_id);
         assert_eq!(candidate.name, expected_candidate.name);
         assert_eq!(candidate.created_at, expected_candidate.created_at);
 

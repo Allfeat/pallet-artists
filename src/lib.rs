@@ -88,7 +88,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         T::AccountId,
-        Candidate<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
+        CandidateInfo<BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
         OptionQuery,
     >;
 
@@ -98,7 +98,7 @@ pub mod pallet {
         _,
         Blake2_128Concat,
         T::AccountId,
-        Artist<T::AccountId, BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
+        ArtistInfo<BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
         OptionQuery,
     >;
 
@@ -136,8 +136,7 @@ pub mod pallet {
                 T::Currency::reserve(&account_id, T::CreationDepositAmount::get())
                     .expect("Could not reverse deposit for the candidate");
 
-                let artist = Artist {
-                    account_id: account_id.clone(),
+                let artist = ArtistInfo {
                     name,
                     created_at: <frame_system::Pallet<T>>::block_number(),
                 };
@@ -158,8 +157,7 @@ pub mod pallet {
                 T::Currency::reserve(&account_id, T::CreationDepositAmount::get())
                     .expect("Could not reverse deposit for the candidate");
 
-                let candidate = Candidate {
-                    account_id: account_id.clone(),
+                let candidate = CandidateInfo {
                     name,
                     created_at: <frame_system::Pallet<T>>::block_number(),
                 };
@@ -232,8 +230,7 @@ pub mod pallet {
             ensure!(!Self::is_artist(&caller), Error::<T>::AlreadyAnArtist);
             ensure!(!Self::is_candidate(&caller), Error::<T>::AlreadyACandidate);
 
-            let candidate = Candidate {
-                account_id: caller.clone(),
+            let candidate = CandidateInfo {
                 name: name.try_into().map_err(|_| Error::<T>::NameTooLong)?,
                 created_at: <frame_system::Pallet<T>>::block_number(),
             };
@@ -274,8 +271,7 @@ pub mod pallet {
             let candidate =
                 <Candidates<T>>::try_get(&who).or_else(|_| Err(Error::<T>::CandidateNotFound))?;
 
-            let artist = Artist {
-                account_id: who.clone(),
+            let artist = ArtistInfo {
                 name: candidate.name,
                 created_at: <frame_system::Pallet<T>>::block_number(),
             };
