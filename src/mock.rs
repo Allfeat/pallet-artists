@@ -4,6 +4,7 @@ use crate::{
     tests::{ALICE, BOB},
 };
 
+use crate::weights::AllfeatWeightInfo;
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{ConstU32, ConstU64},
@@ -94,6 +95,7 @@ impl pallet_artists::Config for Test {
     type Call = Call;
     type CreationDepositAmount = CreationDepositAmount;
     type NameMaxLength = NameMaxLength;
+    type WeightInfo = ();
 }
 
 construct_runtime!(

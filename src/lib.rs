@@ -11,11 +11,14 @@ pub mod tests;
 mod functions;
 mod impls;
 mod types;
+mod weights;
 
 pub use types::*;
 
 use core::marker::PhantomData;
+use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::traits::EnsureOrigin;
+use frame_support::weights::Weight;
 use frame_support::{
     codec::{Decode, Encode, MaxEncodedLen},
     dispatch::DispatchError,
@@ -24,6 +27,7 @@ use frame_support::{
     Blake2_128Concat, BoundedVec,
 };
 use scale_info::TypeInfo;
+use sp_runtime::traits::Hash;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
@@ -42,10 +46,11 @@ pub enum RawOrigin<AccountId> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::weights::WeightInfo;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::UnfilteredDispatchable;
-    use frame_support::weights::GetDispatchInfo;
+    use frame_support::weights::{GetDispatchInfo, PostDispatchInfo};
     use frame_system::pallet_prelude::*;
+    use sp_runtime::traits::Dispatchable;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -66,7 +71,7 @@ pub mod pallet {
         type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
 
         type Call: Parameter
-            + UnfilteredDispatchable<Origin = <Self as Config>::Origin>
+            + Dispatchable<Origin = <Self as Config>::Origin, PostInfo = PostDispatchInfo>
             + From<frame_system::Call<Self>>
             + GetDispatchInfo;
 
@@ -77,6 +82,9 @@ pub mod pallet {
         /// The maximum length of an artist name or symbol stored on-chain.
         #[pallet::constant]
         type NameMaxLength: Get<u32>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::origin]
@@ -179,11 +187,19 @@ pub mod pallet {
         /// An artist was created from a candidate after approbation.
         /// This artist is also added to the artist membership
         CandidateApproved(T::AccountId),
+        /// A Candidate called an extrinsic
+        CandidateExecuted {
+            dispatch_hash: T::Hash,
+            result: DispatchResult,
+        },
 
         // Artist events:
         // ==============
-        /// An artist has been updated
-        ArtistUpdated(T::AccountId),
+        /// An Artist called an extrinsic
+        ArtistExecuted {
+            dispatch_hash: T::Hash,
+            result: DispatchResult,
+        },
     }
 
     #[pallet::error]
@@ -222,7 +238,7 @@ pub mod pallet {
         /// `name:` The name of the artist.
         ///
         /// NOTE: This can only be done once for an account.
-        #[pallet::weight(0)]
+        #[pallet::weight(T::WeightInfo::submit_candidacy(T::NameMaxLength::get()))]
         pub fn submit_candidacy(origin: OriginFor<T>, name: Vec<u8>) -> DispatchResult {
             let caller = ensure_signed(origin)?;
 
@@ -245,7 +261,7 @@ pub mod pallet {
         }
 
         /// Withdraw candidacy to become an artist and get deposit back.
-        #[pallet::weight(0)]
+        #[pallet::weight(T::WeightInfo::withdraw_candidacy())]
         pub fn withdraw_candidacy(origin: OriginFor<T>) -> DispatchResult {
             let caller = Self::ensure_candidate(origin)?;
 
@@ -262,7 +278,7 @@ pub mod pallet {
         /// Approve a candidate and level up his account to be an artist.
         ///
         /// May only be called from `T::AdminOrigin`.
-        #[pallet::weight(0)]
+        #[pallet::weight(T::WeightInfo::approve_candidacy(T::NameMaxLength::get()))]
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
             T::AdminOrigin::ensure_origin(origin)?;
 
@@ -284,7 +300,10 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(0)]
+        #[pallet::weight(
+            T::WeightInfo::call_as_artist()
+                .saturating_add(call.get_dispatch_info().weight)
+        )]
         pub fn call_as_artist(
             origin: OriginFor<T>,
             call: Box<<T as Config>::Call>,
@@ -292,10 +311,23 @@ pub mod pallet {
             let caller = ensure_signed(origin)?;
             ensure!(Self::is_artist(&caller), Error::<T>::NotAnArtist);
 
-            call.dispatch_bypass_filter(RawOrigin::Artist(caller).into())
+            let dispatch_hash = T::Hashing::hash_of(&call);
+            let result = call.dispatch(RawOrigin::Artist(caller).into());
+
+            Self::deposit_event(Event::<T>::ArtistExecuted {
+                dispatch_hash,
+                result: result.map(|_| ()).map_err(|e| e.error),
+            });
+
+            Ok(get_result_weight(result)
+                .map(|w| T::WeightInfo::call_as_artist().saturating_add(w))
+                .into())
         }
 
-        #[pallet::weight(0)]
+        #[pallet::weight(
+            T::WeightInfo::call_as_candidate()
+                .saturating_add(call.get_dispatch_info().weight)
+        )]
         pub fn call_as_candidate(
             origin: OriginFor<T>,
             call: Box<<T as Config>::Call>,
@@ -303,8 +335,28 @@ pub mod pallet {
             let caller = ensure_signed(origin)?;
             ensure!(Self::is_candidate(&caller), Error::<T>::NotACandidate);
 
-            call.dispatch_bypass_filter(RawOrigin::Candidate(caller).into())
+            let dispatch_hash = T::Hashing::hash_of(&call);
+            let result = call.dispatch(RawOrigin::Candidate(caller).into());
+
+            Self::deposit_event(Event::<T>::CandidateExecuted {
+                dispatch_hash,
+                result: result.map(|_| ()).map_err(|e| e.error),
+            });
+
+            Ok(get_result_weight(result)
+                .map(|w| T::WeightInfo::call_as_candidate().saturating_add(w))
+                .into())
         }
+    }
+}
+
+/// Return the weight of a dispatch call result as an `Option`.
+///
+/// Will return the weight regardless of what the state of the result is.
+fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
+    match result {
+        Ok(post_info) => post_info.actual_weight,
+        Err(err) => err.post_info.actual_weight,
     }
 }
 
