@@ -1,51 +1,94 @@
 //! Artists pallet benchmarking.
-#![allow(unused_imports)]
-#![allow(dead_code)]
-
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use frame_benchmarking::{
-	account, benchmarks_instance_pallet, whitelist_account, whitelisted_caller,
-};
-use frame_support::{
-	traits::{EnsureOrigin, Get},
-};
+use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_support::traits::Get;
 use frame_system::RawOrigin as SystemOrigin;
-use sp_std::prelude::*;
 use sp_runtime::traits::Bounded;
+use sp_std::prelude::*;
 
-use crate::Pallet as Artists;
-
-type BalanceOf<T, I> =
-<<T as Config<I>>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
-fn assert_last_event<T: Config<I>, I: 'static>(generic_event: <T as Config<I>>::Event) {
-	frame_system::Pallet::<T>::assert_last_event(generic_event.into());
+fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
+    frame_system::Pallet::<T>::assert_last_event(generic_event.into());
 }
 
-fn assert_event<T: Config<I>, I: 'static>(generic_event: <T as Config<I>>::Event) {
-	frame_system::Pallet::<T>::assert_has_event(generic_event.into());
+/// Helper function that generates a random string from a given length
+fn generate_string(length: usize) -> Vec<u8> {
+    vec![1; length]
 }
 
-benchmarks_instance_pallet! {
-	force_create {
-		let a in 1 .. T::StringLimit::get();
-		let b in 1 .. T::StringLimit::get();
-		let c in 1 .. 4;
+fn create_candidacy<T: Config>(caller: T::AccountId, name: Vec<u8>) -> DispatchResult {
+    Pallet::<T>::submit_candidacy(SystemOrigin::Signed(caller).into(), name)
+}
 
-		let caller: T::AccountId = whitelisted_caller();
-		let caller_lookup = T::Lookup::unlookup(caller.clone());
+fn approve_candidacy_of<T: Config>(caller: T::AccountId) -> DispatchResult {
+    Pallet::<T>::approve_candidacy(SystemOrigin::Root.into(), caller)
+}
 
-		let artist_name = vec![0u8; a as usize];
-		let artist_asset_name = vec![0u8; b as usize];
-		let artist_symbol = vec![0u8; c as usize];
+benchmarks! {
+    where_clause { where T: Config }
 
-		T::Currency::make_free_balance_be(&caller, BalanceOf::<T, I>::max_value());
-	}: _(SystemOrigin::Root, Default::default(), caller_lookup, artist_name.clone(), artist_asset_name, artist_symbol)
-	verify {
-		assert_last_event::<T, I>(Event::ArtistCreated { artist_id: Default::default(), block: <frame_system::Pallet<T>>::block_number(), name: artist_name.try_into().unwrap() }.into());
-	}
+    submit_candidacy {
+        let n in 1..T::NameMaxLength::get();
+        let caller: T::AccountId = whitelisted_caller();
+        T::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+    }: _(SystemOrigin::Signed(caller.clone()), generate_string(n.try_into().unwrap()))
+    verify {
+        assert_last_event::<T>(Event::CandidateAdded { 0: caller }.into());
+    }
 
-	impl_benchmark_test_suite!(Artists, crate::mock::new_test_ext(false), crate::mock::Test)
+    withdraw_candidacy {
+        let caller: T::AccountId = whitelisted_caller();
+        T::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
+        create_candidacy::<T>(caller.clone(), generate_string(T::NameMaxLength::get() as usize))?;
+    }: _(SystemOrigin::Signed(caller.clone()))
+    verify {
+        assert_last_event::<T>(Event::CandidateWithdrew { 0: caller }.into());
+    }
+
+    approve_candidacy {
+        let n in 1..T::NameMaxLength::get();
+        let admin: T::AccountId = whitelisted_caller();
+        let candidate: T::AccountId = whitelisted_caller();
+        T::Currency::make_free_balance_be(&candidate, BalanceOf::<T>::max_value());
+        create_candidacy::<T>(candidate.clone(), generate_string(n.try_into().unwrap()))?;
+    }: _(SystemOrigin::Root, candidate.clone())
+    verify {
+        assert_last_event::<T>(Event::CandidateApproved { 0: candidate }.into());
+    }
+
+    call_as_artist {
+        let artist: T::AccountId = whitelisted_caller();
+        let call: <T as Config>::Call = frame_system::Call::<T>::remark { remark: vec![] }.into();
+        T::Currency::make_free_balance_be(&artist, BalanceOf::<T>::max_value());
+        create_candidacy::<T>(artist.clone(), generate_string(T::NameMaxLength::get() as usize))?;
+        approve_candidacy_of::<T>(artist.clone())?;
+    }: _(SystemOrigin::Signed(artist.clone()), Box::new(call.clone()))
+    verify {
+        let dispatch_hash = T::Hashing::hash_of(&call);
+        // Note that execution fails due to mis-matched origin
+        assert_last_event::<T>(
+            Event::ArtistExecuted { dispatch_hash, result: Err(DispatchError::BadOrigin) }.into()
+        );
+    }
+
+    call_as_candidate {
+        let candidate: T::AccountId = account("alice", 0, 0);
+        let call: <T as Config>::Call = frame_system::Call::<T>::remark { remark: vec![] }.into();
+        T::Currency::make_free_balance_be(&candidate, BalanceOf::<T>::max_value());
+        create_candidacy::<T>(candidate.clone(), generate_string(T::NameMaxLength::get() as usize))?;
+    }: _(SystemOrigin::Signed(candidate.clone()), Box::new(call.clone()))
+    verify {
+        let dispatch_hash = T::Hashing::hash_of(&call);
+        // Note that execution fails due to mis-matched origin
+        assert_last_event::<T>(
+            Event::CandidateExecuted { dispatch_hash, result: Err(DispatchError::BadOrigin) }.into()
+        );
+    }
+}
+
+impl_benchmark_test_suite! {
+    Pallet,
+    crate::mock::new_test_ext(false),
+    crate::mock::Test
 }
