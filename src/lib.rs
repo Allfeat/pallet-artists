@@ -11,6 +11,7 @@ pub mod tests;
 mod functions;
 mod impls;
 mod types;
+mod weights;
 
 pub use types::*;
 
@@ -45,10 +46,10 @@ pub enum RawOrigin<AccountId> {
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
+    use crate::weights::WeightInfo;
     use frame_support::pallet_prelude::*;
     use frame_support::weights::{GetDispatchInfo, PostDispatchInfo};
     use frame_system::pallet_prelude::*;
-    use frame_system::WeightInfo;
     use sp_runtime::traits::Dispatchable;
 
     #[pallet::pallet]
@@ -237,7 +238,7 @@ pub mod pallet {
         /// `name:` The name of the artist.
         ///
         /// NOTE: This can only be done once for an account.
-        #[pallet::weight(0)]
+        #[pallet::weight(T::WeightInfo::submit_candidacy(T::NameMaxLength::get()))]
         pub fn submit_candidacy(origin: OriginFor<T>, name: Vec<u8>) -> DispatchResult {
             let caller = ensure_signed(origin)?;
 
@@ -260,7 +261,7 @@ pub mod pallet {
         }
 
         /// Withdraw candidacy to become an artist and get deposit back.
-        #[pallet::weight(0)]
+        #[pallet::weight(T::WeightInfo::withdraw_candidacy())]
         pub fn withdraw_candidacy(origin: OriginFor<T>) -> DispatchResult {
             let caller = Self::ensure_candidate(origin)?;
 
@@ -277,7 +278,7 @@ pub mod pallet {
         /// Approve a candidate and level up his account to be an artist.
         ///
         /// May only be called from `T::AdminOrigin`.
-        #[pallet::weight(0)]
+        #[pallet::weight(T::WeightInfo::approve_candidacy(T::NameMaxLength::get()))]
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
             T::AdminOrigin::ensure_origin(origin)?;
 
@@ -299,7 +300,10 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(0)]
+        #[pallet::weight(
+            T::WeightInfo::call_as_artist()
+                .saturating_add(call.get_dispatch_info().weight)
+        )]
         pub fn call_as_artist(
             origin: OriginFor<T>,
             call: Box<<T as Config>::Call>,
@@ -318,7 +322,10 @@ pub mod pallet {
             Ok(().into())
         }
 
-        #[pallet::weight(0)]
+        #[pallet::weight(
+            T::WeightInfo::call_as_candidate()
+                .saturating_add(call.get_dispatch_info().weight)
+        )]
         pub fn call_as_candidate(
             origin: OriginFor<T>,
             call: Box<<T as Config>::Call>,
