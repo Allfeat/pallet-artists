@@ -94,6 +94,8 @@ impl pallet_artists::Config for Test {
     type Call = Call;
     type CreationDepositAmount = CreationDepositAmount;
     type NameMaxLength = NameMaxLength;
+
+    type WeightInfo = ();
 }
 
 construct_runtime!(

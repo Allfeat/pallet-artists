@@ -15,7 +15,9 @@ mod types;
 pub use types::*;
 
 use core::marker::PhantomData;
+use frame_support::dispatch::DispatchResultWithPostInfo;
 use frame_support::traits::EnsureOrigin;
+use frame_support::weights::Weight;
 use frame_support::{
     codec::{Decode, Encode, MaxEncodedLen},
     dispatch::DispatchError,
@@ -24,6 +26,7 @@ use frame_support::{
     Blake2_128Concat, BoundedVec,
 };
 use scale_info::TypeInfo;
+use sp_runtime::traits::Hash;
 use sp_runtime::RuntimeDebug;
 use sp_std::prelude::*;
 
@@ -43,9 +46,10 @@ pub enum RawOrigin<AccountId> {
 pub mod pallet {
     use super::*;
     use frame_support::pallet_prelude::*;
-    use frame_support::traits::UnfilteredDispatchable;
-    use frame_support::weights::GetDispatchInfo;
+    use frame_support::weights::{GetDispatchInfo, PostDispatchInfo};
     use frame_system::pallet_prelude::*;
+    use frame_system::WeightInfo;
+    use sp_runtime::traits::Dispatchable;
 
     #[pallet::pallet]
     #[pallet::generate_store(pub(super) trait Store)]
@@ -66,7 +70,7 @@ pub mod pallet {
         type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
 
         type Call: Parameter
-            + UnfilteredDispatchable<Origin = <Self as Config>::Origin>
+            + Dispatchable<Origin = <Self as Config>::Origin, PostInfo = PostDispatchInfo>
             + From<frame_system::Call<Self>>
             + GetDispatchInfo;
 
@@ -77,6 +81,9 @@ pub mod pallet {
         /// The maximum length of an artist name or symbol stored on-chain.
         #[pallet::constant]
         type NameMaxLength: Get<u32>;
+
+        /// Weight information for extrinsics in this pallet.
+        type WeightInfo: WeightInfo;
     }
 
     #[pallet::origin]
@@ -179,11 +186,19 @@ pub mod pallet {
         /// An artist was created from a candidate after approbation.
         /// This artist is also added to the artist membership
         CandidateApproved(T::AccountId),
+        /// A Candidate called an extrinsic
+        CandidateExecuted {
+            dispatch_hash: T::Hash,
+            result: DispatchResult,
+        },
 
         // Artist events:
         // ==============
-        /// An artist has been updated
-        ArtistUpdated(T::AccountId),
+        /// An Artist called an extrinsic
+        ArtistExecuted {
+            dispatch_hash: T::Hash,
+            result: DispatchResult,
+        },
     }
 
     #[pallet::error]
@@ -292,7 +307,15 @@ pub mod pallet {
             let caller = ensure_signed(origin)?;
             ensure!(Self::is_artist(&caller), Error::<T>::NotAnArtist);
 
-            call.dispatch_bypass_filter(RawOrigin::Artist(caller).into())
+            let dispatch_hash = T::Hashing::hash_of(&call);
+            let result = call.dispatch(RawOrigin::Artist(caller).into());
+
+            Self::deposit_event(Event::<T>::ArtistExecuted {
+                dispatch_hash,
+                result: result.map(|_| ()).map_err(|e| e.error),
+            });
+
+            Ok(().into())
         }
 
         #[pallet::weight(0)]
@@ -303,8 +326,27 @@ pub mod pallet {
             let caller = ensure_signed(origin)?;
             ensure!(Self::is_candidate(&caller), Error::<T>::NotACandidate);
 
-            call.dispatch_bypass_filter(RawOrigin::Candidate(caller).into())
+            let dispatch_hash = T::Hashing::hash_of(&call);
+            let result = call.dispatch(RawOrigin::Candidate(caller).into());
+
+            Self::deposit_event(Event::<T>::CandidateExecuted {
+                dispatch_hash,
+                result: result.map(|_| ()).map_err(|e| e.error),
+            });
+
+            Ok(().into())
+            // Ok(get_result_weight(result).map(|w| {}).into())
         }
+    }
+}
+
+/// Return the weight of a dispatch call result as an `Option`.
+///
+/// Will return the weight regardless of what the state of the result is.
+fn get_result_weight(result: DispatchResultWithPostInfo) -> Option<Weight> {
+    match result {
+        Ok(post_info) => post_info.actual_weight,
+        Err(err) => err.post_info.actual_weight,
     }
 }
 
