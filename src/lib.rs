@@ -319,7 +319,9 @@ pub mod pallet {
                 result: result.map(|_| ()).map_err(|e| e.error),
             });
 
-            Ok(().into())
+            Ok(get_result_weight(result)
+                .map(|w| T::WeightInfo::call_as_artist().saturating_add(w))
+                .into())
         }
 
         #[pallet::weight(
@@ -341,8 +343,9 @@ pub mod pallet {
                 result: result.map(|_| ()).map_err(|e| e.error),
             });
 
-            Ok(().into())
-            // Ok(get_result_weight(result).map(|w| {}).into())
+            Ok(get_result_weight(result)
+                .map(|w| T::WeightInfo::call_as_candidate().saturating_add(w))
+                .into())
         }
     }
 }
