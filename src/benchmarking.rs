@@ -5,7 +5,6 @@ use super::*;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin as SystemOrigin;
-use rand::{thread_rng, Rng};
 use sp_runtime::traits::Bounded;
 use sp_std::prelude::*;
 
@@ -14,24 +13,12 @@ fn assert_last_event<T: Config>(generic_event: <T as Config>::Event) {
 }
 
 /// Helper function that generates a random string from a given length
-fn generate_random_string(length: usize) -> String {
-    let chars: Vec<char> = "abcdefghijklmnopqrstuvwxyz".chars().collect();
-    let mut result = String::with_capacity(length);
-    let mut rng = thread_rng();
-    for _ in 0..length {
-        let x: usize = rng.gen();
-        result.push(chars[x % chars.len()])
-    }
-    result
+fn generate_string(length: usize) -> Vec<u8> {
+    vec![1; length]
 }
 
-fn create_candidacy<T: Config>(caller: T::AccountId) -> DispatchResult {
-    Pallet::<T>::submit_candidacy(
-        SystemOrigin::Signed(caller).into(),
-        generate_random_string(T::NameMaxLength::get() as usize)
-            .as_bytes()
-            .to_vec(),
-    )
+fn create_candidacy<T: Config>(caller: T::AccountId, name: Vec<u8>) -> DispatchResult {
+    Pallet::<T>::submit_candidacy(SystemOrigin::Signed(caller).into(), name)
 }
 
 fn approve_candidacy_of<T: Config>(caller: T::AccountId) -> DispatchResult {
@@ -45,7 +32,7 @@ benchmarks! {
         let n in 1..T::NameMaxLength::get();
         let caller: T::AccountId = whitelisted_caller();
         T::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-    }: _(SystemOrigin::Signed(caller.clone()), generate_random_string(n.try_into().unwrap()).as_bytes().to_vec())
+    }: _(SystemOrigin::Signed(caller.clone()), generate_string(n.try_into().unwrap()))
     verify {
         assert_last_event::<T>(Event::CandidateAdded { 0: caller }.into());
     }
@@ -53,17 +40,18 @@ benchmarks! {
     withdraw_candidacy {
         let caller: T::AccountId = whitelisted_caller();
         T::Currency::make_free_balance_be(&caller, BalanceOf::<T>::max_value());
-        create_candidacy::<T>(caller.clone())?;
+        create_candidacy::<T>(caller.clone(), generate_string(T::NameMaxLength::get() as usize))?;
     }: _(SystemOrigin::Signed(caller.clone()))
     verify {
         assert_last_event::<T>(Event::CandidateWithdrew { 0: caller }.into());
     }
 
     approve_candidacy {
+        let n in 1..T::NameMaxLength::get();
         let admin: T::AccountId = whitelisted_caller();
         let candidate: T::AccountId = whitelisted_caller();
         T::Currency::make_free_balance_be(&candidate, BalanceOf::<T>::max_value());
-        create_candidacy::<T>(candidate.clone())?;
+        create_candidacy::<T>(candidate.clone(), generate_string(n.try_into().unwrap()))?;
     }: _(SystemOrigin::Root, candidate.clone())
     verify {
         assert_last_event::<T>(Event::CandidateApproved { 0: candidate }.into());
@@ -73,7 +61,7 @@ benchmarks! {
         let artist: T::AccountId = whitelisted_caller();
         let call: <T as Config>::Call = frame_system::Call::<T>::remark { remark: vec![] }.into();
         T::Currency::make_free_balance_be(&artist, BalanceOf::<T>::max_value());
-        create_candidacy::<T>(artist.clone())?;
+        create_candidacy::<T>(artist.clone(), generate_string(T::NameMaxLength::get() as usize))?;
         approve_candidacy_of::<T>(artist.clone())?;
     }: _(SystemOrigin::Signed(artist.clone()), Box::new(call.clone()))
     verify {
@@ -88,7 +76,7 @@ benchmarks! {
         let candidate: T::AccountId = account("alice", 0, 0);
         let call: <T as Config>::Call = frame_system::Call::<T>::remark { remark: vec![] }.into();
         T::Currency::make_free_balance_be(&candidate, BalanceOf::<T>::max_value());
-        create_candidacy::<T>(candidate.clone())?;
+        create_candidacy::<T>(candidate.clone(), generate_string(T::NameMaxLength::get() as usize))?;
     }: _(SystemOrigin::Signed(candidate.clone()), Box::new(call.clone()))
     verify {
         let dispatch_hash = T::Hashing::hash_of(&call);
