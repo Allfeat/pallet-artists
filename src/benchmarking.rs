@@ -2,7 +2,7 @@
 #![cfg(feature = "runtime-benchmarks")]
 
 use super::*;
-use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
+use frame_benchmarking::{account, benchmarks, whitelisted_caller};
 use frame_support::traits::Get;
 use frame_system::RawOrigin as SystemOrigin;
 use sp_runtime::traits::Bounded;
@@ -85,10 +85,6 @@ benchmarks! {
             Event::CandidateExecuted { dispatch_hash, result: Err(DispatchError::BadOrigin) }.into()
         );
     }
-}
 
-impl_benchmark_test_suite! {
-    Pallet,
-    crate::mock::new_test_ext(false),
-    crate::mock::Test
+    impl_benchmark_test_suite!(Pallet, crate::mock::new_test_ext(false), crate::mock::Test)
 }
