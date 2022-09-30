@@ -8,10 +8,11 @@ pub mod mock;
 #[cfg(test)]
 pub mod tests;
 
+pub mod weights;
+
 mod functions;
 mod impls;
 mod types;
-mod weights;
 
 pub use types::*;
 
