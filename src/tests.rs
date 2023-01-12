@@ -3,6 +3,7 @@ use crate::{
     mock::{Origin, *},
     Event::*,
 };
+use allfeat_support::types::actors::artist::{ArtistData, CandidateData};
 use rand::{thread_rng, Rng};
 
 use frame_support::{assert_noop, assert_ok, ensure};
@@ -60,10 +61,10 @@ fn test_genesis_config() {
         // Test genesis from artists:
         // ==========================
         let artist = ArtistsPallet::get_artist(ALICE).unwrap();
-        let expected_artist: ArtistInfo<
+        let expected_artist: ArtistData<
             BoundedVec<u8, <Test as Config>::NameMaxLength>,
             <Test as frame_system::Config>::BlockNumber,
-        > = ArtistInfo {
+        > = ArtistData {
             name: b"Genesis Alice".to_vec().try_into().unwrap(),
             created_at: 0,
         };
@@ -82,10 +83,10 @@ fn test_genesis_config() {
         // Test genesis from artists:
         // ==========================
         let candidate = ArtistsPallet::get_candidate(BOB).unwrap();
-        let expected_candidate: CandidateInfo<
+        let expected_candidate: CandidateData<
             BoundedVec<u8, <Test as Config>::NameMaxLength>,
             <Test as frame_system::Config>::BlockNumber,
-        > = CandidateInfo {
+        > = CandidateData {
             name: b"Genesis Bob".to_vec().try_into().unwrap(),
             created_at: 0,
         };

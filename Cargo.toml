@@ -24,6 +24,7 @@ frame-support = { version = "4.0.0-dev", default-features = false, git = "https:
 # `system` module provides us with all sorts of useful stuff and macros depend on it being around.
 frame-system = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27", optional = true }
+allfeat-support = { default-features = false, version = "0.1.0-dev", git = "ssh://git@github.com/allfeat/allfeat-support", branch = "master" }
 
 [dev-dependencies]
 pallet-collective = { version = "4.0.0-dev", default-features = false, git = "https://github.com/paritytech/substrate.git", branch = "polkadot-v0.9.27" }
