@@ -48,6 +48,7 @@ pub enum RawOrigin<AccountId> {
 pub mod pallet {
     use super::*;
     use crate::weights::WeightInfo;
+    use allfeat_support::types::actors::artist::{ArtistData, CandidateData};
     use frame_support::pallet_prelude::*;
     use frame_support::weights::{GetDispatchInfo, PostDispatchInfo};
     use frame_system::pallet_prelude::*;
@@ -93,23 +94,13 @@ pub mod pallet {
 
     #[pallet::storage]
     #[pallet::getter(fn get_candidate)]
-    pub(super) type Candidates<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        CandidateInfo<BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
-        OptionQuery,
-    >;
+    pub(super) type Candidates<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, CandidateOf<T>, OptionQuery>;
 
     #[pallet::storage]
     #[pallet::getter(fn get_artist)]
-    pub(super) type Artists<T: Config> = StorageMap<
-        _,
-        Blake2_128Concat,
-        T::AccountId,
-        ArtistInfo<BoundedVec<u8, T::NameMaxLength>, T::BlockNumber>,
-        OptionQuery,
-    >;
+    pub(super) type Artists<T: Config> =
+        StorageMap<_, Blake2_128Concat, T::AccountId, ArtistOf<T>, OptionQuery>;
 
     #[pallet::genesis_config]
     pub struct GenesisConfig<T: Config> {
@@ -145,7 +136,7 @@ pub mod pallet {
                 T::Currency::reserve(&account_id, T::CreationDepositAmount::get())
                     .expect("Could not reverse deposit for the candidate");
 
-                let artist = ArtistInfo {
+                let artist = ArtistData {
                     name,
                     created_at: <frame_system::Pallet<T>>::block_number(),
                 };
@@ -166,7 +157,7 @@ pub mod pallet {
                 T::Currency::reserve(&account_id, T::CreationDepositAmount::get())
                     .expect("Could not reverse deposit for the candidate");
 
-                let candidate = CandidateInfo {
+                let candidate = CandidateData {
                     name,
                     created_at: <frame_system::Pallet<T>>::block_number(),
                 };
@@ -247,7 +238,7 @@ pub mod pallet {
             ensure!(!Self::is_artist(&caller), Error::<T>::AlreadyAnArtist);
             ensure!(!Self::is_candidate(&caller), Error::<T>::AlreadyACandidate);
 
-            let candidate = CandidateInfo {
+            let candidate = CandidateData {
                 name: name.try_into().map_err(|_| Error::<T>::NameTooLong)?,
                 created_at: <frame_system::Pallet<T>>::block_number(),
             };
@@ -288,7 +279,7 @@ pub mod pallet {
             let candidate =
                 <Candidates<T>>::try_get(&who).or_else(|_| Err(Error::<T>::CandidateNotFound))?;
 
-            let artist = ArtistInfo {
+            let artist = ArtistData {
                 name: candidate.name,
                 created_at: <frame_system::Pallet<T>>::block_number(),
             };
