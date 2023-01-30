@@ -47,35 +47,35 @@ impl<T: frame_system::Config> WeightInfo for AllfeatWeightInfo<T> {
 	// Storage: Artists Candidates (r:1 w:1)
 	/// The range of component `n` is `[1, 128]`.
 	fn submit_candidacy(_n: u32, ) -> Weight {
-		(26_586_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(26_586_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: Artists Candidates (r:1 w:1)
 	fn withdraw_candidacy() -> Weight {
-		(22_900_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
-			.saturating_add(T::DbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(22_900_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
+			.saturating_add(T::DbWeight::get().writes(1 as u64))
 	}
 	// Storage: Artists Artists (r:1 w:1)
 	// Storage: Artists Candidates (r:1 w:1)
 	/// The range of component `n` is `[1, 128]`.
 	fn approve_candidacy(n: u32, ) -> Weight {
-		(19_223_000 as Weight)
+		Weight::from_ref_time(19_223_000 as u64)
 			// Standard Error: 0
-			.saturating_add((5_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(T::DbWeight::get().reads(2 as Weight))
-			.saturating_add(T::DbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_ref_time(5_000 as u64).saturating_mul(n as u64))
+			.saturating_add(T::DbWeight::get().reads(2 as u64))
+			.saturating_add(T::DbWeight::get().writes(2 as u64))
 	}
 	// Storage: Artists Artists (r:1 w:0)
 	fn call_as_artist() -> Weight {
-		(16_600_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+		Weight::from_ref_time(16_600_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
 	}
 	// Storage: Artists Candidates (r:1 w:0)
 	fn call_as_candidate() -> Weight {
-		(16_800_000 as Weight)
-			.saturating_add(T::DbWeight::get().reads(1 as Weight))
+		Weight::from_ref_time(16_800_000 as u64)
+			.saturating_add(T::DbWeight::get().reads(1 as u64))
 	}
 }
 
@@ -84,34 +84,34 @@ impl WeightInfo for () {
 	// Storage: Artists Candidates (r:1 w:1)
 	/// The range of component `n` is `[1, 128]`.
 	fn submit_candidacy(_n: u32, ) -> Weight {
-		(26_586_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(26_586_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: Artists Candidates (r:1 w:1)
 	fn withdraw_candidacy() -> Weight {
-		(22_900_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(1 as Weight))
+		Weight::from_ref_time(22_900_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+			.saturating_add(RocksDbWeight::get().writes(1 as u64))
 	}
 	// Storage: Artists Artists (r:1 w:1)
 	// Storage: Artists Candidates (r:1 w:1)
 	/// The range of component `n` is `[1, 128]`.
 	fn approve_candidacy(n: u32, ) -> Weight {
-		(19_223_000 as Weight)
+		Weight::from_ref_time(19_223_000 as u64)
 			// Standard Error: 0
-			.saturating_add((5_000 as Weight).saturating_mul(n as Weight))
-			.saturating_add(RocksDbWeight::get().reads(2 as Weight))
-			.saturating_add(RocksDbWeight::get().writes(2 as Weight))
+			.saturating_add(Weight::from_ref_time(5_000 as u64).saturating_mul(n as u64))
+			.saturating_add(RocksDbWeight::get().reads(2 as u64))
+			.saturating_add(RocksDbWeight::get().writes(2 as u64))
 	}
 	// Storage: Artists Artists (r:1 w:0)
 	fn call_as_artist() -> Weight {
-		(16_600_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+		Weight::from_ref_time(16_600_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 	}
 	// Storage: Artists Candidates (r:1 w:0)
 	fn call_as_candidate() -> Weight {
-		(16_800_000 as Weight)
-			.saturating_add(RocksDbWeight::get().reads(1 as Weight))
+		Weight::from_ref_time(16_800_000 as u64)
+			.saturating_add(RocksDbWeight::get().reads(1 as u64))
 	}
 }

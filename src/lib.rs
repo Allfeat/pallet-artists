@@ -49,8 +49,8 @@ pub mod pallet {
     use super::*;
     use crate::weights::WeightInfo;
     use allfeat_support::types::actors::artist::{ArtistData, CandidateData};
+    use frame_support::dispatch::{GetDispatchInfo, PostDispatchInfo};
     use frame_support::pallet_prelude::*;
-    use frame_support::weights::{GetDispatchInfo, PostDispatchInfo};
     use frame_system::pallet_prelude::*;
     use sp_runtime::traits::Dispatchable;
 
@@ -61,7 +61,7 @@ pub mod pallet {
     #[pallet::config]
     pub trait Config: frame_system::Config {
         /// Let the pallet to emit events
-        type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+        type RuntimeEvent: From<Event<Self>> + IsType<<Self as frame_system::Config>::RuntimeEvent>;
 
         /// Used for candidate/artist deposit
         type Currency: ReservableCurrency<Self::AccountId>;
@@ -70,10 +70,10 @@ pub mod pallet {
         type Origin: From<RawOrigin<Self::AccountId>>;
 
         /// Who can certificate an Artist
-        type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::Origin>;
+        type AdminOrigin: EnsureOrigin<<Self as frame_system::Config>::RuntimeOrigin>;
 
         type Call: Parameter
-            + Dispatchable<Origin = <Self as Config>::Origin, PostInfo = PostDispatchInfo>
+            + Dispatchable<RuntimeOrigin = <Self as Config>::Origin, PostInfo = PostDispatchInfo>
             + From<frame_system::Call<Self>>
             + GetDispatchInfo;
 
@@ -230,6 +230,7 @@ pub mod pallet {
         /// `name:` The name of the artist.
         ///
         /// NOTE: This can only be done once for an account.
+        #[pallet::call_index(0)]
         #[pallet::weight(T::WeightInfo::submit_candidacy(T::NameMaxLength::get()))]
         pub fn submit_candidacy(origin: OriginFor<T>, name: Vec<u8>) -> DispatchResult {
             let caller = ensure_signed(origin)?;
@@ -253,6 +254,7 @@ pub mod pallet {
         }
 
         /// Withdraw candidacy to become an artist and get deposit back.
+        #[pallet::call_index(1)]
         #[pallet::weight(T::WeightInfo::withdraw_candidacy())]
         pub fn withdraw_candidacy(origin: OriginFor<T>) -> DispatchResult {
             let caller = Self::ensure_candidate(origin)?;
@@ -270,6 +272,7 @@ pub mod pallet {
         /// Approve a candidate and level up his account to be an artist.
         ///
         /// May only be called from `T::AdminOrigin`.
+        #[pallet::call_index(2)]
         #[pallet::weight(T::WeightInfo::approve_candidacy(T::NameMaxLength::get()))]
         pub fn approve_candidacy(origin: OriginFor<T>, who: T::AccountId) -> DispatchResult {
             T::AdminOrigin::ensure_origin(origin)?;
@@ -292,6 +295,7 @@ pub mod pallet {
             Ok(())
         }
 
+        #[pallet::call_index(3)]
         #[pallet::weight(
             T::WeightInfo::call_as_artist()
                 .saturating_add(call.get_dispatch_info().weight)
@@ -316,6 +320,7 @@ pub mod pallet {
                 .into())
         }
 
+        #[pallet::call_index(4)]
         #[pallet::weight(
             T::WeightInfo::call_as_candidate()
                 .saturating_add(call.get_dispatch_info().weight)

@@ -4,6 +4,7 @@ use crate::{
     tests::{ALICE, BOB},
 };
 
+use frame_support::traits::AsEnsureOriginWithArg;
 use frame_support::{
     construct_runtime, parameter_types,
     traits::{ConstU32, ConstU64},
@@ -26,8 +27,8 @@ impl frame_system::Config for Test {
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
-    type Origin = Origin;
-    type Call = Call;
+    type RuntimeOrigin = RuntimeOrigin;
+    type RuntimeCall = RuntimeCall;
     type Index = u64;
     type BlockNumber = u64;
     type Hash = H256;
@@ -35,7 +36,7 @@ impl frame_system::Config for Test {
     type AccountId = AccountId;
     type Lookup = IdentityLookup<Self::AccountId>;
     type Header = Header;
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type BlockHashCount = ConstU64<250>;
     type DbWeight = ();
     type Version = ();
@@ -52,7 +53,7 @@ impl frame_system::Config for Test {
 impl pallet_balances::Config for Test {
     type Balance = u64;
     type DustRemoval = ();
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ConstU64<1>;
     type AccountStore = System;
     type WeightInfo = ();
@@ -62,10 +63,13 @@ impl pallet_balances::Config for Test {
 }
 
 impl pallet_assets::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Balance = u64;
+    type RemoveItemsLimit = ConstU32<5>;
     type AssetId = u32;
+    type AssetIdParameter = u32;
     type Currency = Balances;
+    type CreateOrigin = AsEnsureOriginWithArg<frame_system::EnsureSigned<u64>>;
     type ForceOrigin = EnsureRoot<u64>;
     type AssetDeposit = ConstU64<1>;
     type AssetAccountDeposit = ConstU64<10>;
@@ -75,6 +79,7 @@ impl pallet_assets::Config for Test {
     type StringLimit = ConstU32<50>;
     type Freezer = ();
     type Extra = ();
+    type CallbackHandle = ();
     type WeightInfo = ();
 }
 
@@ -87,11 +92,11 @@ parameter_types! {
 }
 
 impl pallet_artists::Config for Test {
-    type Event = Event;
+    type RuntimeEvent = RuntimeEvent;
     type Currency = Balances;
-    type Origin = Origin;
+    type Origin = RuntimeOrigin;
     type AdminOrigin = EnsureRoot<AccountId>;
-    type Call = Call;
+    type Call = RuntimeCall;
     type CreationDepositAmount = CreationDepositAmount;
     type NameMaxLength = NameMaxLength;
     type WeightInfo = ();

@@ -1,6 +1,6 @@
 use super::*;
 use crate::{
-    mock::{Origin, *},
+    mock::{RuntimeOrigin, *},
     Event::*,
 };
 use allfeat_support::types::actors::artist::{ArtistData, CandidateData};
@@ -32,7 +32,7 @@ fn generate_random_string(length: usize) -> String {
 
 /// Panic is the given event is different that the last emitted event
 fn assert_last_event(event: pallet::Event<Test>) {
-    System::assert_last_event(mock::Event::ArtistsPallet(event))
+    System::assert_last_event(mock::RuntimeEvent::ArtistsPallet(event))
 }
 
 impl<T: Config> Pallet<T> {
@@ -111,7 +111,7 @@ fn test_submit_candidacy_with_too_long_name() {
 
         assert_noop!(
             ArtistsPallet::submit_candidacy(
-                mock::Origin::signed(JOHN),
+                mock::RuntimeOrigin::signed(JOHN),
                 name.as_bytes().to_vec().try_into().unwrap()
             ),
             Error::<Test>::NameTooLong
@@ -124,7 +124,7 @@ fn test_submit_candidacy_should_fail_for_existing_artist() {
     new_test_ext(true).execute_with(|| {
         assert_noop!(
             ArtistsPallet::submit_candidacy(
-                Origin::signed(ALICE),
+                RuntimeOrigin::signed(ALICE),
                 b"Alice".to_vec().try_into().unwrap()
             ),
             Error::<Test>::AlreadyAnArtist
@@ -137,7 +137,7 @@ fn test_submit_candidacy_should_fail_for_existing_candidate() {
     new_test_ext(true).execute_with(|| {
         assert_noop!(
             ArtistsPallet::submit_candidacy(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 b"Bob".to_vec().try_into().unwrap()
             ),
             Error::<Test>::AlreadyACandidate
@@ -149,7 +149,7 @@ fn test_submit_candidacy_should_fail_for_existing_candidate() {
 fn test_only_an_existing_candidacy_could_be_removed() {
     new_test_ext(true).execute_with(|| {
         assert_noop!(
-            ArtistsPallet::withdraw_candidacy(Origin::signed(JOHN)),
+            ArtistsPallet::withdraw_candidacy(RuntimeOrigin::signed(JOHN)),
             Error::<Test>::NotACandidate
         );
     });
@@ -160,7 +160,7 @@ fn test_submit_candidacy_twice_should_fail() {
     new_test_ext(true).execute_with(|| {
         assert_noop!(
             ArtistsPallet::submit_candidacy(
-                Origin::signed(BOB),
+                RuntimeOrigin::signed(BOB),
                 b"Bobby".to_vec().try_into().unwrap(),
             ),
             Error::<Test>::AlreadyACandidate
@@ -173,7 +173,7 @@ fn test_submit_candidacy() {
     new_test_ext(true).execute_with(|| {
         // John should be able to candidate
         assert_ok!(ArtistsPallet::submit_candidacy(
-            Origin::signed(JOHN),
+            RuntimeOrigin::signed(JOHN),
             b"Johnny".to_vec().try_into().unwrap()
         ));
 
@@ -186,9 +186,9 @@ fn test_submit_candidacy() {
         assert_eq!(balance, 100 - deposit);
 
         // John should now be in the candidate list
-        assert_ok!(ArtistsPallet::test_caller_is_candidate(Origin::signed(
-            JOHN
-        )));
+        assert_ok!(ArtistsPallet::test_caller_is_candidate(
+            RuntimeOrigin::signed(JOHN)
+        ));
 
         assert_last_event(CandidateAdded(JOHN));
     });
@@ -200,7 +200,9 @@ fn test_withdraw_candidacy() {
         let deposit = CreationDepositAmount::get();
         let initial_balance = Balances::free_balance(BOB);
 
-        assert_ok!(ArtistsPallet::withdraw_candidacy(Origin::signed(BOB)));
+        assert_ok!(ArtistsPallet::withdraw_candidacy(RuntimeOrigin::signed(
+            BOB
+        )));
 
         // Ensure that the deposit is also effected in the genesis build
         let current_balance = Balances::free_balance(BOB);
@@ -211,7 +213,7 @@ fn test_withdraw_candidacy() {
 
         // Bob should have been removed from the candidate list
         assert_noop!(
-            ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)),
+            ArtistsPallet::test_caller_is_candidate(RuntimeOrigin::signed(BOB)),
             Error::<Test>::NotACandidate
         );
 
@@ -224,33 +226,35 @@ fn test_approve_candidacy_to_artist() {
     new_test_ext(true).execute_with(|| {
         // An candidate cannot approve itself
         assert_noop!(
-            ArtistsPallet::approve_candidacy(Origin::signed(BOB), BOB),
+            ArtistsPallet::approve_candidacy(RuntimeOrigin::signed(BOB), BOB),
             BadOrigin
         );
 
         // Could not approve an artist without a valid candidacy
         assert_noop!(
-            ArtistsPallet::approve_candidacy(Origin::root(), JOHN),
+            ArtistsPallet::approve_candidacy(RuntimeOrigin::root(), JOHN),
             Error::<Test>::CandidateNotFound
         );
 
         // Root could approve an artist
-        assert_ok!(ArtistsPallet::approve_candidacy(Origin::root(), BOB));
+        assert_ok!(ArtistsPallet::approve_candidacy(RuntimeOrigin::root(), BOB));
 
         assert_last_event(CandidateApproved(BOB));
 
         // Could not approve an artist twice
         assert_noop!(
-            ArtistsPallet::approve_candidacy(Origin::root(), BOB),
+            ArtistsPallet::approve_candidacy(RuntimeOrigin::root(), BOB),
             Error::<Test>::AlreadyAnArtist
         );
 
         // The artist is well added to the artist group
-        assert_ok!(ArtistsPallet::test_caller_is_artist(Origin::signed(BOB)));
+        assert_ok!(ArtistsPallet::test_caller_is_artist(RuntimeOrigin::signed(
+            BOB
+        )));
 
         // The candidacy was well removed from the candidacies pool
         assert_noop!(
-            ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)),
+            ArtistsPallet::test_caller_is_candidate(RuntimeOrigin::signed(BOB)),
             Error::<Test>::NotACandidate
         );
     });
@@ -260,11 +264,13 @@ fn test_approve_candidacy_to_artist() {
 fn test_caller_is_artist() {
     new_test_ext(true).execute_with(|| {
         // Should execute the extrinsic as `ALICE` is in the artists group
-        assert_ok!(ArtistsPallet::test_caller_is_artist(Origin::signed(ALICE)));
+        assert_ok!(ArtistsPallet::test_caller_is_artist(RuntimeOrigin::signed(
+            ALICE
+        )));
 
         // Should refuse BOB who isn't an artist
         assert_noop!(
-            ArtistsPallet::test_caller_is_artist(Origin::signed(BOB)),
+            ArtistsPallet::test_caller_is_artist(RuntimeOrigin::signed(BOB)),
             Error::<Test>::NotAnArtist
         );
     })
@@ -274,11 +280,13 @@ fn test_caller_is_artist() {
 fn test_caller_is_candidate() {
     new_test_ext(true).execute_with(|| {
         // Should execute the extrinsic as `BOB` is in the candidate list
-        assert_ok!(ArtistsPallet::test_caller_is_candidate(Origin::signed(BOB)));
+        assert_ok!(ArtistsPallet::test_caller_is_candidate(
+            RuntimeOrigin::signed(BOB)
+        ));
 
         // Should refuse the ALICE who isn't a candidate
         assert_noop!(
-            ArtistsPallet::test_caller_is_candidate(Origin::signed(ALICE)),
+            ArtistsPallet::test_caller_is_candidate(RuntimeOrigin::signed(ALICE)),
             Error::<Test>::NotACandidate
         );
     })
