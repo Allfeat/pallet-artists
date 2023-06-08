@@ -71,7 +71,7 @@ dependencies = [
 [[package]]
 name = "allfeat-primitives"
 version = "1.0.0"
-source = "git+https://github.com/allfeat/Allfeat?branch=update#c6f617a3ee9995c959f21267bc3f173c1f090763"
+source = "git+https://github.com/allfeat/Allfeat?branch=update#7f2983caa125dc57c132352eaf3e519bfcd5abae"
 dependencies = [
  "frame-system",
  "parity-scale-codec",
@@ -84,7 +84,7 @@ dependencies = [
 [[package]]
 name = "allfeat-support"
 version = "0.1.0-dev"
-source = "git+https://github.com/allfeat/allfeat-support?branch=update#71d45d272d2927622869fe4818ae44e05dae7916"
+source = "git+https://github.com/allfeat/allfeat-support?branch=update#e85c0ab32f3f154ff1c8cfb05b9b194920475e3b"
 dependencies = [
  "allfeat-primitives",
  "frame-support",
