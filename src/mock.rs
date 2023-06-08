@@ -3,6 +3,7 @@ use crate::{
     mock::sp_api_hidden_includes_construct_runtime::hidden_include::traits::GenesisBuild,
     tests::{ALICE, BOB},
 };
+use codec::{Decode, Encode, MaxEncodedLen};
 
 use frame_support::traits::AsEnsureOriginWithArg;
 use frame_support::{
@@ -10,11 +11,31 @@ use frame_support::{
     traits::{ConstU32, ConstU64},
 };
 use frame_system::EnsureRoot;
-use sp_core::H256;
+use scale_info::TypeInfo;
+use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
 };
+
+#[derive(
+    Encode,
+    Decode,
+    Copy,
+    Clone,
+    Eq,
+    PartialEq,
+    Ord,
+    PartialOrd,
+    MaxEncodedLen,
+    TypeInfo,
+    RuntimeDebug,
+)]
+pub enum TestId {
+    Foo,
+    Bar,
+    Baz,
+}
 
 pub const DAYS: u32 = 24 * 60 * 60 * 1000;
 
@@ -51,15 +72,19 @@ impl frame_system::Config for Test {
 }
 
 impl pallet_balances::Config for Test {
+    type RuntimeEvent = RuntimeEvent;
+    type WeightInfo = ();
     type Balance = u64;
     type DustRemoval = ();
-    type RuntimeEvent = RuntimeEvent;
     type ExistentialDeposit = ConstU64<1>;
     type AccountStore = System;
-    type WeightInfo = ();
+    type ReserveIdentifier = [u8; 8];
+    type HoldIdentifier = TestId;
+    type FreezeIdentifier = TestId;
     type MaxLocks = ();
     type MaxReserves = ();
-    type ReserveIdentifier = [u8; 8];
+    type MaxHolds = ConstU32<2>;
+    type MaxFreezes = ConstU32<2>;
 }
 
 impl pallet_assets::Config for Test {
