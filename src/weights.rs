@@ -40,78 +40,31 @@ pub trait WeightInfo {
 	fn call_as_candidate() -> Weight;
 }
 
-/// Weight functions for `pallet_artists` using the Allfeat node and recommended hardware.
-pub struct AllfeatWeightInfo<T>(PhantomData<T>);
-impl<T: frame_system::Config> WeightInfo for AllfeatWeightInfo<T> {
-	// Storage: Artists Artists (r:1 w:0)
-	// Storage: Artists Candidates (r:1 w:1)
-	/// The range of component `n` is `[1, 128]`.
-	fn submit_candidacy(_n: u32, ) -> Weight {
-		Weight::from_ref_time(26_586_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-	}
-	// Storage: Artists Candidates (r:1 w:1)
-	fn withdraw_candidacy() -> Weight {
-		Weight::from_ref_time(22_900_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-			.saturating_add(T::DbWeight::get().writes(1 as u64))
-	}
-	// Storage: Artists Artists (r:1 w:1)
-	// Storage: Artists Candidates (r:1 w:1)
-	/// The range of component `n` is `[1, 128]`.
-	fn approve_candidacy(n: u32, ) -> Weight {
-		Weight::from_ref_time(19_223_000 as u64)
-			// Standard Error: 0
-			.saturating_add(Weight::from_ref_time(5_000 as u64).saturating_mul(n as u64))
-			.saturating_add(T::DbWeight::get().reads(2 as u64))
-			.saturating_add(T::DbWeight::get().writes(2 as u64))
-	}
-	// Storage: Artists Artists (r:1 w:0)
-	fn call_as_artist() -> Weight {
-		Weight::from_ref_time(16_600_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-	}
-	// Storage: Artists Candidates (r:1 w:0)
-	fn call_as_candidate() -> Weight {
-		Weight::from_ref_time(16_800_000 as u64)
-			.saturating_add(T::DbWeight::get().reads(1 as u64))
-	}
-}
-
 impl WeightInfo for () {
 	// Storage: Artists Artists (r:1 w:0)
 	// Storage: Artists Candidates (r:1 w:1)
 	/// The range of component `n` is `[1, 128]`.
 	fn submit_candidacy(_n: u32, ) -> Weight {
-		Weight::from_ref_time(26_586_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::default()
 	}
 	// Storage: Artists Candidates (r:1 w:1)
 	fn withdraw_candidacy() -> Weight {
-		Weight::from_ref_time(22_900_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
-			.saturating_add(RocksDbWeight::get().writes(1 as u64))
+		Weight::default()
+
 	}
 	// Storage: Artists Artists (r:1 w:1)
 	// Storage: Artists Candidates (r:1 w:1)
 	/// The range of component `n` is `[1, 128]`.
-	fn approve_candidacy(n: u32, ) -> Weight {
-		Weight::from_ref_time(19_223_000 as u64)
-			// Standard Error: 0
-			.saturating_add(Weight::from_ref_time(5_000 as u64).saturating_mul(n as u64))
-			.saturating_add(RocksDbWeight::get().reads(2 as u64))
-			.saturating_add(RocksDbWeight::get().writes(2 as u64))
+	fn approve_candidacy(_n: u32, ) -> Weight {
+		Weight::default()
+
 	}
 	// Storage: Artists Artists (r:1 w:0)
 	fn call_as_artist() -> Weight {
-		Weight::from_ref_time(16_600_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+		Weight::default()
 	}
 	// Storage: Artists Candidates (r:1 w:0)
 	fn call_as_candidate() -> Weight {
-		Weight::from_ref_time(16_800_000 as u64)
-			.saturating_add(RocksDbWeight::get().reads(1 as u64))
+		Weight::default()
 	}
 }

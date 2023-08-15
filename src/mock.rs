@@ -1,6 +1,5 @@
 use crate::{
     self as pallet_artists,
-    mock::sp_api_hidden_includes_construct_runtime::hidden_include::traits::GenesisBuild,
     tests::{ALICE, BOB},
 };
 use codec::{Decode, Encode, MaxEncodedLen};
@@ -14,8 +13,8 @@ use frame_system::EnsureRoot;
 use scale_info::TypeInfo;
 use sp_core::{RuntimeDebug, H256};
 use sp_runtime::{
-    testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
+    BuildStorage,
 };
 
 #[derive(
@@ -39,25 +38,23 @@ pub enum TestId {
 
 pub const DAYS: u32 = 24 * 60 * 60 * 1000;
 
-type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
 type AccountId = u64;
 
 impl frame_system::Config for Test {
+    type RuntimeEvent = RuntimeEvent;
     type BaseCallFilter = frame_support::traits::Everything;
     type BlockWeights = ();
     type BlockLength = ();
     type RuntimeOrigin = RuntimeOrigin;
     type RuntimeCall = RuntimeCall;
-    type Index = u64;
-    type BlockNumber = u64;
+    type Nonce = u64;
     type Hash = H256;
     type Hashing = BlakeTwo256;
-    type AccountId = AccountId;
+    type AccountId = u64;
     type Lookup = IdentityLookup<Self::AccountId>;
-    type Header = Header;
-    type RuntimeEvent = RuntimeEvent;
+    type Block = Block;
     type BlockHashCount = ConstU64<250>;
     type DbWeight = ();
     type Version = ();
@@ -68,23 +65,23 @@ impl frame_system::Config for Test {
     type SystemWeightInfo = ();
     type SS58Prefix = ();
     type OnSetCode = ();
-    type MaxConsumers = ConstU32<2>;
+    type MaxConsumers = ConstU32<16>;
 }
 
 impl pallet_balances::Config for Test {
-    type RuntimeEvent = RuntimeEvent;
-    type WeightInfo = ();
+    type MaxLocks = ();
+    type MaxReserves = ();
+    type ReserveIdentifier = [u8; 8];
     type Balance = u64;
+    type RuntimeEvent = RuntimeEvent;
     type DustRemoval = ();
     type ExistentialDeposit = ConstU64<1>;
     type AccountStore = System;
-    type ReserveIdentifier = [u8; 8];
-    type HoldIdentifier = TestId;
-    type FreezeIdentifier = TestId;
-    type MaxLocks = ();
-    type MaxReserves = ();
-    type MaxHolds = ConstU32<2>;
-    type MaxFreezes = ConstU32<2>;
+    type WeightInfo = ();
+    type FreezeIdentifier = ();
+    type MaxFreezes = ();
+    type RuntimeHoldReason = ();
+    type MaxHolds = ();
 }
 
 impl pallet_assets::Config for Test {
@@ -128,10 +125,7 @@ impl pallet_artists::Config for Test {
 }
 
 construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
+    pub enum Test
     {
         System: frame_system,
         Balances: pallet_balances,
@@ -141,8 +135,8 @@ construct_runtime!(
 );
 
 pub(crate) fn new_test_ext(include_genesis: bool) -> sp_io::TestExternalities {
-    let mut storage = frame_system::GenesisConfig::default()
-        .build_storage::<Test>()
+    let mut storage = frame_system::GenesisConfig::<Test>::default()
+        .build_storage()
         .unwrap();
 
     // Give 100 tokens to the 100 first accounts

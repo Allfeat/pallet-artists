@@ -120,7 +120,7 @@ pub mod pallet {
     }
 
     #[pallet::genesis_build]
-    impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+    impl<T: Config> BuildGenesisConfig for GenesisConfig<T> {
         fn build(&self) {
             for (account_id, name) in &self.artists {
                 let name: BoundedVec<u8, T::NameMaxLength> = name

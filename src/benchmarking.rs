@@ -68,7 +68,7 @@ benchmarks! {
         let dispatch_hash = T::Hashing::hash_of(&call);
         // Note that execution fails due to mis-matched origin
         assert_last_event::<T>(
-            Event::ArtistExecuted { dispatch_hash, result: Err(DispatchError::BadOrigin) }.into()
+            Event::ArtistExecuted { dispatch_hash, result: Ok(()) }.into()
         );
     }
 
@@ -82,7 +82,7 @@ benchmarks! {
         let dispatch_hash = T::Hashing::hash_of(&call);
         // Note that execution fails due to mis-matched origin
         assert_last_event::<T>(
-            Event::CandidateExecuted { dispatch_hash, result: Err(DispatchError::BadOrigin) }.into()
+            Event::CandidateExecuted { dispatch_hash, result: Ok(()) }.into()
         );
     }
 

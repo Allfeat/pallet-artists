@@ -7,6 +7,7 @@ use allfeat_support::types::actors::artist::{ArtistData, CandidateData};
 use rand::{thread_rng, Rng};
 
 use frame_support::{assert_noop, assert_ok, ensure};
+use frame_system::pallet_prelude::BlockNumberFor;
 use frame_system::{ensure_signed, pallet_prelude::OriginFor};
 use sp_runtime::traits::BadOrigin;
 
@@ -63,7 +64,7 @@ fn test_genesis_config() {
         let artist = ArtistsPallet::get_artist(ALICE).unwrap();
         let expected_artist: ArtistData<
             BoundedVec<u8, <Test as Config>::NameMaxLength>,
-            <Test as frame_system::Config>::BlockNumber,
+            BlockNumberFor<Test>,
         > = ArtistData {
             name: b"Genesis Alice".to_vec().try_into().unwrap(),
             created_at: 0,
@@ -85,7 +86,7 @@ fn test_genesis_config() {
         let candidate = ArtistsPallet::get_candidate(BOB).unwrap();
         let expected_candidate: CandidateData<
             BoundedVec<u8, <Test as Config>::NameMaxLength>,
-            <Test as frame_system::Config>::BlockNumber,
+            BlockNumberFor<Test>,
         > = CandidateData {
             name: b"Genesis Bob".to_vec().try_into().unwrap(),
             created_at: 0,
