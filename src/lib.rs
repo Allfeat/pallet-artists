@@ -102,21 +102,12 @@ pub mod pallet {
         StorageMap<_, Blake2_128Concat, T::AccountId, ArtistOf<T>, OptionQuery>;
 
     #[pallet::genesis_config]
+    #[derive(frame_support::DefaultNoBound)]
     pub struct GenesisConfig<T: Config> {
         /// The existing artists at the genesis
         pub artists: Vec<(T::AccountId, Vec<u8>)>,
         /// The existing candidates at the genesis
         pub candidates: Vec<(T::AccountId, Vec<u8>)>,
-    }
-
-    #[cfg(feature = "std")]
-    impl<T: Config> Default for GenesisConfig<T> {
-        fn default() -> Self {
-            Self {
-                artists: Default::default(),
-                candidates: Default::default(),
-            }
-        }
     }
 
     #[pallet::genesis_build]
