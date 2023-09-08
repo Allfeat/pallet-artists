@@ -16,13 +16,13 @@ mod types;
 
 pub use types::*;
 
+use codec::{Decode, Encode, MaxEncodedLen};
 use core::marker::PhantomData;
 use frame_support::dispatch::DispatchResultWithPostInfo;
+use frame_support::pallet_prelude::DispatchError;
 use frame_support::traits::EnsureOrigin;
 use frame_support::weights::Weight;
 use frame_support::{
-    codec::{Decode, Encode, MaxEncodedLen},
-    dispatch::DispatchError,
     dispatch::DispatchResult,
     traits::{Currency, ReservableCurrency},
     Blake2_128Concat, BoundedVec,
